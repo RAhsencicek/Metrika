@@ -62,7 +62,7 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       ></div>
@@ -75,7 +75,7 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             <h2 className="text-xl font-bold text-white">Projeyi Düzenle</h2>
             <p className="text-sm text-gray-400 mt-1">Proje bilgilerini güncelleyin</p>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 hover:bg-dark-700 rounded-lg text-gray-400 hover:text-white transition-colors"
           >
@@ -119,12 +119,11 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
               ].map((status) => (
                 <button
                   key={status.value}
-                  onClick={() => setFormData({ ...formData, status: status.value as Project['status'] })}
-                  className={`px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-                    formData.status === status.value
+                  onClick={() => setFormData({ ...formData, status: status.value as ProjectEditData['status'] })}
+                  className={`px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${formData.status === status.value
                       ? `bg-${status.color}-500/20 border-${status.color}-500/50 text-${status.color}-400`
                       : 'bg-dark-900 border-dark-600 text-gray-400 hover:border-dark-500'
-                  }`}
+                    }`}
                 >
                   {status.label}
                 </button>
@@ -191,7 +190,7 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             <Trash2 className="w-4 h-4 mr-2" />
             Projeyi Sil
           </button>
-          
+
           <div className="flex gap-3">
             <button
               onClick={onClose}

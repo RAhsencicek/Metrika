@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, ArrowRight, Check, Layers, RefreshCw, GitMerge, 
+import {
+  ArrowLeft, ArrowRight, Check, Layers, RefreshCw, GitMerge,
   FileText, Calendar, Users, Target, DollarSign, Plus, X, Search
 } from 'lucide-react';
+import { useProjectStore, useNotificationStore } from '../store';
+import type { ProjectColor } from '../types';
 
 interface ProjectFormData {
   methodology: 'Waterfall' | 'Scrum' | 'Hybrid' | '';
@@ -32,6 +34,8 @@ interface KPI {
 
 const CreateProjectWizard: React.FC = () => {
   const navigate = useNavigate();
+  const { addProject } = useProjectStore();
+  const { addNotification } = useNotificationStore();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<ProjectFormData>({
     methodology: '',
@@ -133,9 +137,9 @@ const CreateProjectWizard: React.FC = () => {
   };
 
   const handleRemoveMember = (memberId: string) => {
-    setFormData({ 
-      ...formData, 
-      teamMembers: formData.teamMembers.filter(m => m.id !== memberId) 
+    setFormData({
+      ...formData,
+      teamMembers: formData.teamMembers.filter(m => m.id !== memberId)
     });
   };
 
@@ -169,10 +173,43 @@ const CreateProjectWizard: React.FC = () => {
   };
 
   const handleCreateProject = () => {
-    // Here you would typically send the data to an API
-    console.log('Creating project:', formData);
-    // Navigate to the new project (mock ID)
-    navigate('/projects/new-project');
+    // Generate a project color based on methodology
+    const colorMap: Record<string, ProjectColor> = {
+      'Scrum': 'purple',
+      'Waterfall': 'blue',
+      'Hybrid': 'green',
+    };
+
+    // Create the project using the store
+    const newProject = addProject({
+      title: formData.name,
+      description: formData.description || `${formData.methodology} metodolojisi ile oluşturulan proje.`,
+      status: 'Active',
+      progress: 0,
+      methodology: formData.methodology as 'Waterfall' | 'Scrum' | 'Hybrid',
+      startDate: formData.startDate,
+      dueDate: formData.endDate,
+      teamSize: formData.teamMembers.length,
+      tasksCompleted: 0,
+      totalTasks: 0,
+      budget: parseFloat(formData.budget) || 0,
+      budgetUsed: 0,
+      color: colorMap[formData.methodology] || 'blue',
+      managerId: formData.teamMembers[0]?.id || '1',
+      teamMemberIds: formData.teamMembers.map(m => m.id),
+      kpis: formData.kpis.map(k => ({ ...k, current: '0' })),
+    });
+
+    // Add a success notification
+    addNotification({
+      type: 'success',
+      title: 'Proje Oluşturuldu',
+      message: `"${formData.name}" projesi başarıyla oluşturuldu.`,
+      actionUrl: `/projects/${newProject.id}`,
+    });
+
+    // Navigate to the new project
+    navigate(`/projects/${newProject.id}`);
   };
 
   const canProceed = () => {
@@ -186,7 +223,7 @@ const CreateProjectWizard: React.FC = () => {
     }
   };
 
-  const filteredMembers = availableMembers.filter(m => 
+  const filteredMembers = availableMembers.filter(m =>
     m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
     m.role.toLowerCase().includes(memberSearch.toLowerCase())
   );
@@ -208,14 +245,13 @@ const CreateProjectWizard: React.FC = () => {
         <div className="absolute top-5 left-0 right-0 h-0.5 bg-dark-700 -z-10"></div>
         {steps.map((step) => (
           <div key={step.number} className="flex flex-col items-center">
-            <div 
-              className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${
-                currentStep > step.number 
-                  ? 'bg-green-500 border-green-500 text-white'
-                  : currentStep === step.number 
-                    ? 'bg-primary border-primary text-white'
-                    : 'bg-dark-800 border-dark-600 text-gray-500'
-              }`}
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${currentStep > step.number
+                ? 'bg-green-500 border-green-500 text-white'
+                : currentStep === step.number
+                  ? 'bg-primary border-primary text-white'
+                  : 'bg-dark-800 border-dark-600 text-gray-500'
+                }`}
             >
               {currentStep > step.number ? (
                 <Check className="w-5 h-5" />
@@ -236,26 +272,24 @@ const CreateProjectWizard: React.FC = () => {
         {currentStep === 1 && (
           <div className="space-y-6 animate-fade-in">
             <p className="text-gray-400">Projenizin doğasına en uygun yönetim şeklini belirleyin.</p>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {methodologies.map((m) => (
-                <div 
+                <div
                   key={m.id}
                   onClick={() => handleMethodologySelect(m.id as 'Waterfall' | 'Scrum' | 'Hybrid')}
-                  className={`relative p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
-                    formData.methodology === m.id 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-dark-700 bg-dark-800 hover:border-dark-600'
-                  }`}
+                  className={`relative p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${formData.methodology === m.id
+                    ? 'border-primary bg-primary/5'
+                    : 'border-dark-700 bg-dark-800 hover:border-dark-600'
+                    }`}
                 >
                   {formData.methodology === m.id && (
                     <div className="absolute top-4 right-4 bg-primary text-white p-1 rounded-full">
                       <Check className="w-4 h-4" />
                     </div>
                   )}
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
-                    formData.methodology === m.id ? 'bg-primary text-white' : 'bg-dark-700 text-gray-400'
-                  }`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${formData.methodology === m.id ? 'bg-primary text-white' : 'bg-dark-700 text-gray-400'
+                    }`}>
                     <m.icon className="w-6 h-6" />
                   </div>
                   <h3 className="text-lg font-bold text-white mb-2">{m.title}</h3>
@@ -297,7 +331,7 @@ const CreateProjectWizard: React.FC = () => {
         {currentStep === 2 && (
           <div className="space-y-6 animate-fade-in">
             <p className="text-gray-400">Projenizin temel bilgilerini girin.</p>
-            
+
             <div className="bg-dark-800 rounded-xl p-6 border border-dark-700 space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-white">Proje Adı *</label>
@@ -369,12 +403,12 @@ const CreateProjectWizard: React.FC = () => {
         {currentStep === 3 && (
           <div className="space-y-6 animate-fade-in">
             <p className="text-gray-400">Projenize dahil olacak ekip üyelerini seçin.</p>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Available Members */}
               <div className="bg-dark-800 rounded-xl p-6 border border-dark-700">
                 <h3 className="font-semibold text-white mb-4">Mevcut Ekip Üyeleri</h3>
-                
+
                 <div className="relative mb-4">
                   <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-500" />
                   <input
@@ -393,14 +427,13 @@ const CreateProjectWizard: React.FC = () => {
                       <div
                         key={member.id}
                         onClick={() => !isSelected && handleAddMember(member)}
-                        className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-                          isSelected 
-                            ? 'bg-dark-900/50 opacity-50 cursor-not-allowed' 
-                            : 'bg-dark-900 hover:bg-dark-700 cursor-pointer'
-                        }`}
+                        className={`flex items-center justify-between p-3 rounded-lg transition-colors ${isSelected
+                          ? 'bg-dark-900/50 opacity-50 cursor-not-allowed'
+                          : 'bg-dark-900 hover:bg-dark-700 cursor-pointer'
+                          }`}
                       >
                         <div className="flex items-center">
-                          <img 
+                          <img
                             src={`https://picsum.photos/id/${member.avatar}/32/32`}
                             className="w-8 h-8 rounded-full mr-3"
                             alt={member.name}
@@ -442,7 +475,7 @@ const CreateProjectWizard: React.FC = () => {
                         className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20"
                       >
                         <div className="flex items-center">
-                          <img 
+                          <img
                             src={`https://picsum.photos/id/${member.avatar}/32/32`}
                             className="w-8 h-8 rounded-full mr-3"
                             alt={member.name}
@@ -471,12 +504,12 @@ const CreateProjectWizard: React.FC = () => {
         {currentStep === 4 && (
           <div className="space-y-6 animate-fade-in">
             <p className="text-gray-400">Projeniz için takip edilecek KPI'ları tanımlayın. (Opsiyonel)</p>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Add KPI */}
               <div className="bg-dark-800 rounded-xl p-6 border border-dark-700">
                 <h3 className="font-semibold text-white mb-4">Yeni KPI Ekle</h3>
-                
+
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-sm text-gray-400">KPI Adı</label>
@@ -581,7 +614,7 @@ const CreateProjectWizard: React.FC = () => {
         {currentStep === 5 && (
           <div className="space-y-6 animate-fade-in">
             <p className="text-gray-400">Proje bilgilerinizi gözden geçirin ve oluşturun.</p>
-            
+
             <div className="bg-dark-800 rounded-xl p-6 border border-dark-700 space-y-6">
               {/* Methodology */}
               <div className="flex items-start justify-between pb-4 border-b border-dark-700">
@@ -589,7 +622,7 @@ const CreateProjectWizard: React.FC = () => {
                   <p className="text-xs text-gray-500 uppercase font-medium">Metodoloji</p>
                   <p className="text-lg font-semibold text-white mt-1">{formData.methodology}</p>
                 </div>
-                <button 
+                <button
                   onClick={() => setCurrentStep(1)}
                   className="text-xs text-primary hover:text-blue-400"
                 >
@@ -601,7 +634,7 @@ const CreateProjectWizard: React.FC = () => {
               <div className="pb-4 border-b border-dark-700">
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-xs text-gray-500 uppercase font-medium">Proje Bilgileri</p>
-                  <button 
+                  <button
                     onClick={() => setCurrentStep(2)}
                     className="text-xs text-primary hover:text-blue-400"
                   >
@@ -638,7 +671,7 @@ const CreateProjectWizard: React.FC = () => {
               <div className="pb-4 border-b border-dark-700">
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-xs text-gray-500 uppercase font-medium">Ekip ({formData.teamMembers.length} kişi)</p>
-                  <button 
+                  <button
                     onClick={() => setCurrentStep(3)}
                     className="text-xs text-primary hover:text-blue-400"
                   >
@@ -667,7 +700,7 @@ const CreateProjectWizard: React.FC = () => {
               <div>
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-xs text-gray-500 uppercase font-medium">KPI'lar ({formData.kpis.length} adet)</p>
-                  <button 
+                  <button
                     onClick={() => setCurrentStep(4)}
                     className="text-xs text-primary hover:text-blue-400"
                   >
@@ -696,16 +729,16 @@ const CreateProjectWizard: React.FC = () => {
 
       {/* Navigation Buttons */}
       <div className="mt-10 flex justify-between">
-        <button 
+        <button
           onClick={handleBack}
           className="px-6 py-3 rounded-lg border border-dark-600 text-gray-300 hover:bg-dark-700 hover:text-white transition-colors flex items-center"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           {currentStep === 1 ? 'İptal' : 'Geri'}
         </button>
-        
+
         {currentStep < totalSteps ? (
-          <button 
+          <button
             onClick={handleNext}
             disabled={!canProceed()}
             className="px-8 py-3 rounded-lg bg-primary hover:bg-blue-600 disabled:bg-dark-700 disabled:text-gray-500 text-white font-medium transition-colors shadow-lg shadow-primary/20 flex items-center"
@@ -714,7 +747,7 @@ const CreateProjectWizard: React.FC = () => {
             <ArrowRight className="w-4 h-4 ml-2" />
           </button>
         ) : (
-          <button 
+          <button
             onClick={handleCreateProject}
             className="px-8 py-3 rounded-lg bg-green-600 hover:bg-green-500 text-white font-medium transition-colors shadow-lg shadow-green-600/20 flex items-center"
           >

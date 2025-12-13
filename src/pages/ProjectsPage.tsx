@@ -1,185 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Plus, Search, Filter, MoreHorizontal, Calendar, Users, 
-  TrendingUp, Clock, CheckCircle, AlertCircle, Pause,
-  LayoutGrid, List, SlidersHorizontal
+import {
+  Plus, Search, Filter, MoreHorizontal, Users,
+  TrendingUp, Clock, CheckCircle, AlertCircle,
+  LayoutGrid, List
 } from 'lucide-react';
-
-interface Project {
-  id: string;
-  title: string;
-  description: string;
-  status: 'Active' | 'Completed' | 'On Hold' | 'At Risk';
-  progress: number;
-  methodology: 'Waterfall' | 'Scrum' | 'Hybrid';
-  startDate: string;
-  dueDate: string;
-  teamSize: number;
-  tasksCompleted: number;
-  totalTasks: number;
-  budget: number;
-  budgetUsed: number;
-  color: string;
-  manager: {
-    name: string;
-    avatar: number;
-  };
-}
+import { useProjectStore, useUserStore } from '../store';
+import { colorClasses, projectStatusClasses, methodologyClasses } from '../utils/colorUtils';
 
 const ProjectsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { projects } = useProjectStore();
+  const { getUserById } = useUserStore();
+
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [methodologyFilter, setMethodologyFilter] = useState<string>('All');
 
-  // Mock Projects Data
-  const projects: Project[] = [
-    {
-      id: '1',
-      title: 'E-Ticaret Platformu Yenileme',
-      description: 'Mevcut e-ticaret altyapısının modernizasyonu ve yeni özellikler eklenmesi.',
-      status: 'Active',
-      progress: 65,
-      methodology: 'Scrum',
-      startDate: '2023-01-10',
-      dueDate: '2023-06-30',
-      teamSize: 8,
-      tasksCompleted: 45,
-      totalTasks: 72,
-      budget: 250000,
-      budgetUsed: 162500,
-      color: 'blue',
-      manager: { name: 'Emre Yılmaz', avatar: 64 }
-    },
-    {
-      id: '2',
-      title: 'Mobil Uygulama Geliştirme',
-      description: 'iOS ve Android platformları için native mobil uygulama.',
-      status: 'Active',
-      progress: 45,
-      methodology: 'Scrum',
-      startDate: '2023-02-15',
-      dueDate: '2023-08-15',
-      teamSize: 6,
-      tasksCompleted: 28,
-      totalTasks: 65,
-      budget: 180000,
-      budgetUsed: 99000,
-      color: 'purple',
-      manager: { name: 'Zeynep Demir', avatar: 61 }
-    },
-    {
-      id: '3',
-      title: 'CRM Entegrasyonu',
-      description: 'Salesforce CRM sistemi ile mevcut altyapının entegrasyonu.',
-      status: 'Completed',
-      progress: 100,
-      methodology: 'Waterfall',
-      startDate: '2023-01-01',
-      dueDate: '2023-04-30',
-      teamSize: 4,
-      tasksCompleted: 38,
-      totalTasks: 38,
-      budget: 120000,
-      budgetUsed: 115000,
-      color: 'green',
-      manager: { name: 'Ahmet Kaya', avatar: 60 }
-    },
-    {
-      id: '4',
-      title: 'Veritabanı Optimizasyonu',
-      description: 'Performans iyileştirme ve sorgu optimizasyonu çalışmaları.',
-      status: 'At Risk',
-      progress: 35,
-      methodology: 'Hybrid',
-      startDate: '2023-03-01',
-      dueDate: '2023-05-15',
-      teamSize: 3,
-      tasksCompleted: 12,
-      totalTasks: 34,
-      budget: 80000,
-      budgetUsed: 72000,
-      color: 'yellow',
-      manager: { name: 'Mehmet Yıldız', avatar: 62 }
-    },
-    {
-      id: '5',
-      title: 'Güvenlik Denetimi',
-      description: 'Yıllık güvenlik taraması ve penetrasyon testleri.',
-      status: 'On Hold',
-      progress: 20,
-      methodology: 'Waterfall',
-      startDate: '2023-04-01',
-      dueDate: '2023-07-01',
-      teamSize: 2,
-      tasksCompleted: 5,
-      totalTasks: 25,
-      budget: 50000,
-      budgetUsed: 10000,
-      color: 'red',
-      manager: { name: 'Caner Erkin', avatar: 65 }
-    },
-    {
-      id: '6',
-      title: 'Müşteri Portalı',
-      description: 'Self-servis müşteri portalı tasarımı ve geliştirmesi.',
-      status: 'Active',
-      progress: 78,
-      methodology: 'Scrum',
-      startDate: '2023-02-01',
-      dueDate: '2023-05-30',
-      teamSize: 5,
-      tasksCompleted: 42,
-      totalTasks: 54,
-      budget: 150000,
-      budgetUsed: 127500,
-      color: 'cyan',
-      manager: { name: 'Ayşe Öztürk', avatar: 63 }
-    }
-  ];
-
-  const getStatusConfig = (status: Project['status']) => {
-    switch (status) {
-      case 'Active':
-        return { color: 'green', icon: TrendingUp, label: 'Aktif', bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/30' };
-      case 'Completed':
-        return { color: 'blue', icon: CheckCircle, label: 'Tamamlandı', bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30' };
-      case 'On Hold':
-        return { color: 'yellow', icon: Pause, label: 'Beklemede', bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/30' };
-      case 'At Risk':
-        return { color: 'red', icon: AlertCircle, label: 'Riskli', bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30' };
-    }
-  };
-
-  const getMethodologyBadge = (methodology: Project['methodology']) => {
-    switch (methodology) {
-      case 'Scrum':
-        return 'bg-purple-500/10 text-purple-400 border-purple-500/30';
-      case 'Waterfall':
-        return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
-      case 'Hybrid':
-        return 'bg-green-500/10 text-green-400 border-green-500/30';
-    }
-  };
-
   // Filtering
-  const filteredProjects = projects.filter(project => {
-    const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         project.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || project.status === statusFilter;
-    const matchesMethodology = methodologyFilter === 'All' || project.methodology === methodologyFilter;
-    return matchesSearch && matchesStatus && matchesMethodology;
-  });
+  const filteredProjects = useMemo(() => {
+    return projects.filter(project => {
+      const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'All' || project.status === statusFilter;
+      const matchesMethodology = methodologyFilter === 'All' || project.methodology === methodologyFilter;
+      return matchesSearch && matchesStatus && matchesMethodology;
+    });
+  }, [projects, searchQuery, statusFilter, methodologyFilter]);
 
   // Stats
-  const stats = {
+  const stats = useMemo(() => ({
     total: projects.length,
     active: projects.filter(p => p.status === 'Active').length,
     completed: projects.filter(p => p.status === 'Completed').length,
     atRisk: projects.filter(p => p.status === 'At Risk').length,
-  };
+  }), [projects]);
 
   return (
     <div className="pb-20 animate-fade-in">
@@ -189,7 +45,7 @@ const ProjectsPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-white">Projeler</h1>
           <p className="text-gray-400 text-sm mt-1">Tüm projeleri görüntüleyin ve yönetin</p>
         </div>
-        <button 
+        <button
           onClick={() => navigate('/projects/new')}
           className="flex items-center px-5 py-2.5 bg-primary hover:bg-blue-600 text-white rounded-xl font-medium transition-all shadow-lg shadow-primary/20"
         >
@@ -294,13 +150,13 @@ const ProjectsPage: React.FC = () => {
             <div className="flex bg-dark-900 rounded-lg p-1 border border-dark-600">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded ${viewMode === 'grid' ? 'bg-dark-700 text-white' : 'text-gray-400 hover:text-white'}`}
+                className={`p - 2 rounded ${viewMode === 'grid' ? 'bg-dark-700 text-white' : 'text-gray-400 hover:text-white'} `}
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded ${viewMode === 'list' ? 'bg-dark-700 text-white' : 'text-gray-400 hover:text-white'}`}
+                className={`p - 2 rounded ${viewMode === 'list' ? 'bg-dark-700 text-white' : 'text-gray-400 hover:text-white'} `}
               >
                 <List className="w-4 h-4" />
               </button>
@@ -313,27 +169,28 @@ const ProjectsPage: React.FC = () => {
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredProjects.map((project) => {
-            const statusConfig = getStatusConfig(project.status);
-            const StatusIcon = statusConfig.icon;
-            
+            const statusConfig = projectStatusClasses[project.status];
+            const colors = colorClasses[project.color];
+            const manager = getUserById(project.managerId);
+
             return (
               <div
                 key={project.id}
-                onClick={() => navigate(`/projects/${project.id}`)}
+                onClick={() => navigate(`/ projects / ${project.id} `)}
                 className="bg-dark-800 rounded-xl border border-dark-700 hover:border-primary/50 transition-all cursor-pointer group overflow-hidden"
               >
                 {/* Color Bar */}
-                <div className={`h-1 bg-${project.color}-500`}></div>
-                
+                <div className={`h - 1 ${colors.bg} `}></div>
+
                 <div className="p-6">
                   {/* Header */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={`text-xs px-2 py-1 rounded-full border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}>
+                        <span className={`text - xs px - 2 py - 1 rounded - full border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border} `}>
                           {statusConfig.label}
                         </span>
-                        <span className={`text-xs px-2 py-1 rounded-full border ${getMethodologyBadge(project.methodology)}`}>
+                        <span className={`text - xs px - 2 py - 1 rounded - full border ${methodologyClasses[project.methodology]} `}>
                           {project.methodology}
                         </span>
                       </div>
@@ -342,7 +199,7 @@ const ProjectsPage: React.FC = () => {
                       </h3>
                       <p className="text-sm text-gray-400 mt-1 line-clamp-2">{project.description}</p>
                     </div>
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); }}
                       className="p-1.5 hover:bg-dark-700 rounded-lg text-gray-400 hover:text-white transition-colors"
                     >
@@ -357,9 +214,9 @@ const ProjectsPage: React.FC = () => {
                       <span className="text-white font-medium">{project.progress}%</span>
                     </div>
                     <div className="w-full bg-dark-700 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full bg-${project.color}-500 transition-all`}
-                        style={{ width: `${project.progress}%` }}
+                      <div
+                        className={`h - 2 rounded - full ${colors.bg} transition - all`}
+                        style={{ width: `${project.progress}% ` }}
                       ></div>
                     </div>
                   </div>
@@ -389,20 +246,24 @@ const ProjectsPage: React.FC = () => {
                   {/* Footer */}
                   <div className="flex items-center justify-between pt-4 border-t border-dark-700">
                     <div className="flex items-center">
-                      <img 
-                        src={`https://picsum.photos/id/${project.manager.avatar}/32/32`}
-                        className="w-7 h-7 rounded-full border border-dark-600"
-                        alt={project.manager.name}
-                      />
-                      <span className="text-xs text-gray-400 ml-2">{project.manager.name}</span>
-                    </div>
+                      {manager && (
+                        <>
+                          <img
+                            src={`https://picsum.photos/id/${manager.avatar}/32/32`}
+                            className="w-7 h-7 rounded-full border border-dark-600"
+                            alt={manager.name}
+                          />
+                          <span className="text-xs text-gray-400 ml-2">{manager.name}</span>
+                        </>
+                      )}
+                    </div >
                     <div className="flex items-center text-xs text-gray-400">
                       <Users className="w-3 h-3 mr-1" />
                       {project.teamSize}
                     </div>
-                  </div>
-                </div>
-              </div>
+                  </div >
+                </div >
+              </div >
             );
           })}
 
@@ -417,7 +278,7 @@ const ProjectsPage: React.FC = () => {
             <h3 className="font-bold text-gray-400 group-hover:text-white transition-colors">Yeni Proje Oluştur</h3>
             <p className="text-xs text-gray-500 mt-2 text-center">Metodoloji seçerek başlayın</p>
           </div>
-        </div>
+        </div >
       ) : (
         /* List View */
         <div className="bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
@@ -435,20 +296,22 @@ const ProjectsPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-dark-700">
               {filteredProjects.map((project) => {
-                const statusConfig = getStatusConfig(project.status);
-                
+                const statusConfig = projectStatusClasses[project.status];
+                const colors = colorClasses[project.color];
+                const manager = getUserById(project.managerId);
+
                 return (
-                  <tr 
+                  <tr
                     key={project.id}
                     onClick={() => navigate(`/projects/${project.id}`)}
                     className="hover:bg-dark-700/30 cursor-pointer transition-colors"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <div className={`w-2 h-2 rounded-full bg-${project.color}-500 mr-3`}></div>
+                        <div className={`w-2 h-2 rounded-full ${colors.dot} mr-3`}></div>
                         <div>
                           <p className="font-medium text-white">{project.title}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{project.manager.name}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{manager?.name || 'Yönetici atanmamış'}</p>
                         </div>
                       </div>
                     </td>
@@ -458,15 +321,15 @@ const ProjectsPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`text-xs px-2 py-1 rounded-full border ${getMethodologyBadge(project.methodology)}`}>
+                      <span className={`text-xs px-2 py-1 rounded-full border ${methodologyClasses[project.methodology]}`}>
                         {project.methodology}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-20 bg-dark-700 rounded-full h-1.5">
-                          <div 
-                            className={`h-1.5 rounded-full bg-${project.color}-500`}
+                          <div
+                            className={`h-1.5 rounded-full ${colors.bg}`}
                             style={{ width: `${project.progress}%` }}
                           ></div>
                         </div>
@@ -483,7 +346,7 @@ const ProjectsPage: React.FC = () => {
                       {new Date(project.dueDate).toLocaleDateString('tr-TR')}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button 
+                      <button
                         onClick={(e) => { e.stopPropagation(); }}
                         className="p-2 hover:bg-dark-600 rounded-lg text-gray-400 hover:text-white"
                       >
@@ -499,16 +362,18 @@ const ProjectsPage: React.FC = () => {
       )}
 
       {/* Empty State */}
-      {filteredProjects.length === 0 && (
-        <div className="text-center py-16">
-          <div className="w-16 h-16 bg-dark-800 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Search className="w-8 h-8 text-gray-500" />
+      {
+        filteredProjects.length === 0 && (
+          <div className="text-center py-16">
+            <div className="w-16 h-16 bg-dark-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search className="w-8 h-8 text-gray-500" />
+            </div>
+            <h3 className="text-lg font-medium text-white mb-2">Proje bulunamadı</h3>
+            <p className="text-gray-400 text-sm">Arama kriterlerinize uygun proje bulunmamaktadır.</p>
           </div>
-          <h3 className="text-lg font-medium text-white mb-2">Proje bulunamadı</h3>
-          <p className="text-gray-400 text-sm">Arama kriterlerinize uygun proje bulunmamaktadır.</p>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 
