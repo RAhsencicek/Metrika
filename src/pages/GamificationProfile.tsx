@@ -1,19 +1,54 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Trophy, Star, Zap, TrendingUp, Users, FileText, CheckCircle,
-    Flame, Target, Award, Crown, Clock, ArrowRight, Lock, Sparkles,
+    Flame, Target, Award, Crown, Clock, Lock, Sparkles,
     X, ExternalLink, Medal, ChevronRight
 } from 'lucide-react';
 import { useUserStore, useTaskStore, useProjectStore } from '../store';
 
-// Unvan tanımları - SVG karakterler
+// Unvan tanımları - Zengin animasyon ve özelliklerle
 const TITLES = [
-    { minLevel: 1, maxLevel: 5, name: 'Çaylak', key: 'caylak', icon: '🌱', emoji: '🐣', color: 'text-green-400', bg: 'bg-green-500/20', glow: 'shadow-green-500/50', gradient: 'from-green-500 to-emerald-400', description: 'Yeni başlayan, öğrenmeye hevesli' },
-    { minLevel: 6, maxLevel: 10, name: 'Geliştirici', key: 'gelistirici', icon: '⚡', emoji: '🦊', color: 'text-blue-400', bg: 'bg-blue-500/20', glow: 'shadow-blue-500/50', gradient: 'from-blue-500 to-cyan-400', description: 'Yeteneklerini geliştiren, çalışkan' },
-    { minLevel: 11, maxLevel: 20, name: 'Uzman', key: 'uzman', icon: '🔥', emoji: '🦁', color: 'text-orange-400', bg: 'bg-orange-500/20', glow: 'shadow-orange-500/50', gradient: 'from-orange-500 to-amber-400', description: 'Deneyimli ve güvenilir profesyonel' },
-    { minLevel: 21, maxLevel: 30, name: 'Usta', key: 'usta', icon: '💎', emoji: '🐉', color: 'text-purple-400', bg: 'bg-purple-500/20', glow: 'shadow-purple-500/50', gradient: 'from-purple-500 to-pink-400', description: 'Alanında söz sahibi, mentor' },
-    { minLevel: 31, maxLevel: 999, name: 'Efsane', key: 'efsane', icon: '👑', emoji: '🦅', color: 'text-yellow-400', bg: 'bg-yellow-500/20', glow: 'shadow-yellow-500/50', gradient: 'from-yellow-500 to-orange-400', description: 'Efsanevi başarıların sahibi' },
+    {
+        minLevel: 1, maxLevel: 5, name: 'Çaylak', key: 'caylak',
+        icon: '🌱', emoji: '🐣',
+        color: 'text-green-400', bg: 'bg-green-500/20', glow: 'shadow-green-500/50',
+        gradient: 'from-green-500 to-emerald-400',
+        description: 'Yeni başlayan, öğrenmeye hevesli',
+        personality: 'Meraklı ve enerjik'
+    },
+    {
+        minLevel: 6, maxLevel: 10, name: 'Geliştirici', key: 'gelistirici',
+        icon: '⚡', emoji: '🦊',
+        color: 'text-blue-400', bg: 'bg-blue-500/20', glow: 'shadow-blue-500/50',
+        gradient: 'from-blue-500 to-cyan-400',
+        description: 'Yeteneklerini geliştiren, çalışkan',
+        personality: 'Zeki ve hızlı'
+    },
+    {
+        minLevel: 11, maxLevel: 20, name: 'Uzman', key: 'uzman',
+        icon: '🔥', emoji: '🦁',
+        color: 'text-orange-400', bg: 'bg-orange-500/20', glow: 'shadow-orange-500/50',
+        gradient: 'from-orange-500 to-amber-400',
+        description: 'Deneyimli ve güvenilir profesyonel',
+        personality: 'Güçlü ve kararlı'
+    },
+    {
+        minLevel: 21, maxLevel: 30, name: 'Usta', key: 'usta',
+        icon: '💎', emoji: '🐉',
+        color: 'text-purple-400', bg: 'bg-purple-500/20', glow: 'shadow-purple-500/50',
+        gradient: 'from-purple-500 to-pink-400',
+        description: 'Alanında söz sahibi, mentor',
+        personality: 'Bilge ve güçlü'
+    },
+    {
+        minLevel: 31, maxLevel: 999, name: 'Efsane', key: 'efsane',
+        icon: '👑', emoji: '🦅',
+        color: 'text-yellow-400', bg: 'bg-yellow-500/20', glow: 'shadow-yellow-500/50',
+        gradient: 'from-yellow-500 to-orange-400',
+        description: 'Efsanevi başarıların sahibi',
+        personality: 'Muhteşem ve ilham verici'
+    },
 ];
 
 // Başarım tanımları
@@ -30,49 +65,188 @@ const ACHIEVEMENTS = [
     { id: 'documenter', name: 'Belgeleyici', description: '5 doküman yükle', howTo: 'Doküman analizi bölümünden 5 dosya yükleyin.', icon: FileText, xp: 200, color: 'emerald', requirement: 5, type: 'documents', link: '/documents/analysis', linkText: 'Dokümanlara Git' },
 ];
 
-// Animasyonlu Karakter Component'i - CSS ile yapılmış
-const AnimatedCharacter: React.FC<{
+// ================================
+// INTERACTIVE CHARACTER COMPONENT
+// Simple & Elegant with Large Glow Effects
+// ================================
+interface CharacterProps {
     title: typeof TITLES[0];
-    isHovered: boolean;
-    onClick: () => void
-}> = ({ title, isHovered, onClick }) => {
+    isActive: boolean;
+    isPast: boolean;
+    isFuture: boolean;
+    size: 'small' | 'large';
+}
+
+const InteractiveCharacter: React.FC<CharacterProps> = ({
+    title, isActive, isPast, isFuture, size
+}) => {
+    const [isEntered, setIsEntered] = useState(false);
+
+    // Entrance animation
+    useEffect(() => {
+        if (isActive && size === 'large') {
+            const timer = setTimeout(() => setIsEntered(true), 100);
+            return () => clearTimeout(timer);
+        }
+    }, [isActive, size]);
+
+    const sizeClasses = size === 'large'
+        ? 'w-52 h-52 text-9xl'  // Larger size
+        : 'w-20 h-20 text-4xl';
+
+    const opacityClass = isFuture ? 'opacity-40' : isPast ? 'opacity-60' : 'opacity-100';
+
     return (
         <div
-            className={`relative cursor-pointer transition-all duration-500 ${isHovered ? 'scale-110' : ''}`}
-            onClick={onClick}
+            className={`relative transition-all duration-500 ${opacityClass} group select-none ${size === 'large' ? 'cursor-default' : 'cursor-pointer'}`}
         >
-            {/* Outer glow ring */}
-            <div className={`absolute inset-0 rounded-full bg-gradient-to-r ${title.gradient} opacity-30 blur-2xl animate-pulse`}></div>
+            {/* Large outer glow - only for active character */}
+            {isActive && size === 'large' && (
+                <>
+                    {/* Very large background glow */}
+                    <div className={`absolute inset-[-60px] rounded-full bg-gradient-to-r ${title.gradient} opacity-25 blur-3xl animate-pulse`}></div>
 
-            {/* Rotating ring */}
-            <div className={`absolute inset-[-10px] rounded-full border-4 border-dashed ${title.color} opacity-20 ${isHovered ? 'animate-spin' : ''}`} style={{ animationDuration: '8s' }}></div>
+                    {/* Secondary glow ring */}
+                    <div className={`absolute inset-[-40px] rounded-full bg-gradient-to-r ${title.gradient} opacity-15 blur-2xl`}></div>
+
+                    {/* Rotating dashed circle with 3 sparkles */}
+                    <div className="absolute inset-[-35px] animate-spin" style={{ animationDuration: '12s' }}>
+                        {/* Dashed border circle */}
+                        <div className={`absolute inset-0 rounded-full border-2 border-dashed ${title.color} opacity-30`}></div>
+
+                        {/* 3 Sparkles rotating with the circle */}
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 text-2xl">✨</div>
+                        <div className="absolute bottom-0 left-1/4 translate-y-1 text-2xl" style={{ transform: 'rotate(120deg)' }}>✨</div>
+                        <div className="absolute bottom-0 right-1/4 translate-y-1 text-2xl" style={{ transform: 'rotate(240deg)' }}>✨</div>
+                    </div>
+                </>
+            )}
 
             {/* Main character circle */}
-            <div className={`relative w-48 h-48 rounded-full bg-gradient-to-br ${title.gradient} flex items-center justify-center shadow-2xl ${title.glow}`}>
-                {/* Inner pattern */}
-                <div className="absolute inset-2 rounded-full bg-dark-900/30 backdrop-blur-sm"></div>
+            <div className={`relative ${sizeClasses} rounded-full flex items-center justify-center transition-all duration-500 ${isActive
+                ? `bg-gradient-to-br ${title.gradient} shadow-2xl ${title.glow} ring-4 ring-white/20`
+                : isPast
+                    ? `${title.bg} border-2 border-white/10`
+                    : 'bg-dark-700 border-2 border-dark-600'
+                } ${isActive && size === 'large' ? 'group-hover:scale-110' : 'group-hover:scale-115'} ${isEntered && size === 'large' ? 'animate-emoji-entrance' : ''} ${isActive && size === 'large' ? 'animate-breathing' : ''}`}>
 
-                {/* Platform reflection */}
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-8 bg-white/10 rounded-full blur-sm"></div>
+                {/* Inner gradient overlay */}
+                {isActive && (
+                    <div className="absolute inset-3 rounded-full bg-gradient-to-t from-black/30 to-transparent"></div>
+                )}
+
+                {/* Large shine effect */}
+                {isActive && size === 'large' && (
+                    <div className="absolute top-4 left-6 w-12 h-12 bg-white/25 rounded-full blur-lg"></div>
+                )}
 
                 {/* Character emoji */}
-                <span className={`relative text-8xl transition-all duration-300 ${isHovered ? 'scale-125 -translate-y-2' : ''}`}>
+                <span className={`relative drop-shadow-lg transition-transform duration-500 ${size === 'large' ? 'group-hover:scale-110' : 'group-hover:scale-105'}`}>
                     {title.emoji}
                 </span>
 
-                {/* Sparkle effects */}
-                <div className="absolute top-4 left-6 text-2xl animate-pulse">✨</div>
-                <div className="absolute top-8 right-4 text-xl animate-pulse" style={{ animationDelay: '0.3s' }}>✨</div>
-                <div className="absolute bottom-12 left-4 text-lg animate-pulse" style={{ animationDelay: '0.6s' }}>✨</div>
-                <div className="absolute bottom-8 right-6 text-xl animate-pulse" style={{ animationDelay: '0.9s' }}>✨</div>
+                {/* Hover tooltip for small characters */}
+                {size === 'small' && (
+                    <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-y-1 bg-dark-900 px-3 py-2 rounded-lg border border-dark-600 whitespace-nowrap z-20 pointer-events-none shadow-xl">
+                        <p className={`text-sm font-bold ${title.color}`}>{title.name}</p>
+                        <p className="text-xs text-gray-400">Lv.{title.minLevel}-{title.maxLevel}</p>
+                        <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-dark-900 rotate-45 border-l border-t border-dark-600"></div>
+                    </div>
+                )}
             </div>
 
             {/* Floor shadow */}
-            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-32 h-4 bg-black/40 rounded-full blur-md"></div>
+            {size === 'large' && (
+                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-40 h-6 bg-black/40 rounded-full blur-lg transition-all duration-500 group-hover:w-44 group-hover:bg-black/50"></div>
+            )}
+
+            {/* Lock icon for future characters */}
+            {isFuture && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-dark-900/80 rounded-full p-2 shadow-lg">
+                        <Lock className="w-4 h-4 text-gray-500" />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
+// ================================
+// INFO CARD COMPONENT
+// ================================
+interface InfoCardProps {
+    label: string;
+    value: string | number;
+    icon?: React.ReactNode;
+    color: string;
+    onClick?: () => void;
+    subtext?: string;
+}
+
+const InfoCard: React.FC<InfoCardProps> = ({ label, value, icon, color, onClick, subtext }) => {
+    const [isHovered, setIsHovered] = useState(false);
+    const [isClicked, setIsClicked] = useState(false);
+
+    const handleClick = () => {
+        if (!onClick) return;
+        setIsClicked(true);
+        setTimeout(() => setIsClicked(false), 300);
+        onClick();
+    };
+
+    return (
+        <div
+            className={`relative overflow-hidden rounded-xl p-4 text-center border transition-all duration-300 cursor-pointer group ${isClicked ? 'scale-95' : isHovered ? 'scale-105' : ''
+                }`}
+            style={{
+                background: `linear-gradient(135deg, ${color}15, ${color}05)`,
+                borderColor: `${color}30`,
+            }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            onClick={handleClick}
+        >
+            {/* Animated background shimmer */}
+            <div className={`absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent transition-transform duration-700 ${isHovered ? 'translate-x-full' : '-translate-x-full'
+                }`}></div>
+
+            {/* Glow effect on hover */}
+            {isHovered && (
+                <div className="absolute inset-0 opacity-20" style={{
+                    background: `radial-gradient(circle at center, ${color}, transparent 70%)`
+                }}></div>
+            )}
+
+            <div className="relative z-10">
+                {icon && (
+                    <div className={`mx-auto mb-2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${isHovered ? 'scale-125 rotate-12' : ''
+                        }`} style={{ backgroundColor: `${color}20` }}>
+                        {icon}
+                    </div>
+                )}
+                <div className={`text-xl font-bold transition-all ${isHovered ? 'scale-110' : ''}`} style={{ color }}>
+                    {value}
+                </div>
+                <div className="text-xs text-gray-400 mt-1">{label}</div>
+                {subtext && (
+                    <div className="text-[10px] text-gray-500 mt-0.5">{subtext}</div>
+                )}
+            </div>
+
+            {/* Click ripple effect */}
+            {isClicked && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-full h-full animate-ping rounded-xl" style={{ backgroundColor: `${color}20` }}></div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ================================
+// MAIN COMPONENT
+// ================================
 const GamificationProfile: React.FC = () => {
     const navigate = useNavigate();
     const { currentUser } = useUserStore();
@@ -81,8 +255,6 @@ const GamificationProfile: React.FC = () => {
 
     // States
     const [selectedAchievement, setSelectedAchievement] = useState<typeof ACHIEVEMENTS[0] | null>(null);
-    const [isCharacterHovered, setIsCharacterHovered] = useState(false);
-    const [characterClicked, setCharacterClicked] = useState(false);
 
     // Streak verisi
     const currentStreak = currentUser?.currentStreak || 12;
@@ -90,8 +262,8 @@ const GamificationProfile: React.FC = () => {
     const [streakAnimation, setStreakAnimation] = useState(false);
 
     // Gerçek veriler
-    const userLevel = currentUser?.level || 1;
-    const userXP = currentUser?.xp || 0;
+    const userLevel = currentUser?.level || 12;
+    const userXP = currentUser?.xp || 12450;
     const completedTasks = tasks.filter(t => t.status === 'Done').length;
     const totalTasks = tasks.length;
     const userProjects = projects.filter(p => p.teamMemberIds?.includes(currentUser?.id || '') || p.managerId === currentUser?.id).length;
@@ -102,9 +274,9 @@ const GamificationProfile: React.FC = () => {
     const xpProgress = Math.min((xpInCurrentLevel / 1000) * 100, 100);
     const xpRemaining = Math.max((userLevel * 1000) - userXP, 0);
 
-    // Mevcut unvanı bul
-    const currentTitle = TITLES.find(t => userLevel >= t.minLevel && userLevel <= t.maxLevel) || TITLES[0];
-    const nextTitle = TITLES.find(t => t.minLevel > userLevel);
+    const currentTitleIndex = TITLES.findIndex(t => userLevel >= t.minLevel && userLevel <= t.maxLevel);
+    const currentTitle = TITLES[currentTitleIndex] || TITLES[0];
+    const nextTitle = TITLES[currentTitleIndex + 1];
 
     // Başarım durumlarını hesapla
     const getAchievementProgress = (achievement: typeof ACHIEVEMENTS[0]) => {
@@ -132,12 +304,6 @@ const GamificationProfile: React.FC = () => {
             return () => clearTimeout(timer);
         }
     }, [currentStreak]);
-
-    // Karakter tıklama animasyonu
-    const handleCharacterClick = () => {
-        setCharacterClicked(true);
-        setTimeout(() => setCharacterClicked(false), 500);
-    };
 
     // Streak günleri
     const streakDays = Array.from({ length: 7 }, (_, i) => {
@@ -283,129 +449,106 @@ const GamificationProfile: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* CHARACTER SHOWCASE */}
+                    {/* CHARACTER SHOWCASE - Premium Design */}
                     <div className="bg-gradient-to-br from-dark-800 via-dark-800 to-dark-900 rounded-2xl border border-dark-600 overflow-hidden relative">
                         {/* Animated background */}
                         <div className="absolute inset-0 overflow-hidden">
-                            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-gradient-to-r ${currentTitle.gradient} opacity-10 blur-3xl`}></div>
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(0,0,0,0.6)_100%)]"></div>
+                            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-gradient-to-r ${currentTitle.gradient} opacity-5 blur-3xl`}></div>
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,transparent_0%,rgba(0,0,0,0.7)_100%)]"></div>
 
                             {/* Floating particles */}
-                            <div className="absolute top-10 left-10 w-2 h-2 bg-white/20 rounded-full animate-float"></div>
-                            <div className="absolute top-20 right-20 w-3 h-3 bg-white/10 rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
-                            <div className="absolute bottom-20 left-20 w-2 h-2 bg-white/15 rounded-full animate-float" style={{ animationDelay: '2s' }}></div>
+                            <div className="absolute top-16 left-16 w-2 h-2 bg-white/20 rounded-full animate-float"></div>
+                            <div className="absolute top-32 right-24 w-3 h-3 bg-white/10 rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
+                            <div className="absolute bottom-32 left-24 w-2 h-2 bg-white/15 rounded-full animate-float" style={{ animationDelay: '2s' }}></div>
+                            <div className="absolute bottom-48 right-16 w-2 h-2 bg-white/20 rounded-full animate-float" style={{ animationDelay: '0.5s' }}></div>
                         </div>
 
                         <div className="relative z-10 p-8">
                             {/* Title */}
                             <div className="text-center mb-6">
-                                <h3 className="text-xl font-bold text-white flex items-center justify-center gap-2">
-                                    <span className="text-2xl">{currentTitle.icon}</span>
+                                <h3 className="text-2xl font-bold text-white">
                                     Karakterim
                                 </h3>
-                                <p className="text-gray-400 text-sm mt-1">Tıklayarak etkileşime girin</p>
                             </div>
 
-                            {/* Character Area */}
-                            <div
-                                className="flex justify-center mb-6"
-                                onMouseEnter={() => setIsCharacterHovered(true)}
-                                onMouseLeave={() => setIsCharacterHovered(false)}
-                            >
-                                <AnimatedCharacter
+                            {/* Main Character Area */}
+                            <div className="flex justify-center items-center mb-8">
+                                <InteractiveCharacter
                                     title={currentTitle}
-                                    isHovered={isCharacterHovered || characterClicked}
-                                    onClick={handleCharacterClick}
+                                    isActive={true}
+                                    isPast={false}
+                                    isFuture={false}
+                                    size="large"
                                 />
                             </div>
 
-                            {/* Character Info Cards */}
-                            <div className="grid grid-cols-3 gap-4 mb-4">
-                                <div className="bg-dark-900/60 backdrop-blur rounded-xl p-4 text-center border border-dark-600">
-                                    <div className={`text-xl font-bold ${currentTitle.color}`}>{currentTitle.name}</div>
-                                    <div className="text-xs text-gray-400 mt-1">Unvan</div>
-                                </div>
-                                <div className="bg-dark-900/60 backdrop-blur rounded-xl p-4 text-center border border-dark-600">
-                                    <div className="text-xl font-bold text-white">Lv.{userLevel}</div>
-                                    <div className="text-xs text-gray-400 mt-1">Seviye</div>
-                                </div>
-                                <div className="bg-dark-900/60 backdrop-blur rounded-xl p-4 text-center border border-dark-600">
-                                    <div className="text-xl font-bold text-yellow-400">{userXP.toLocaleString()}</div>
-                                    <div className="text-xs text-gray-400 mt-1">Toplam XP</div>
-                                </div>
+                            {/* Interactive Info Cards */}
+                            <div className="grid grid-cols-3 gap-4 mb-6">
+                                <InfoCard
+                                    label="Unvan"
+                                    value={currentTitle.name}
+                                    icon={<span className="text-lg">{currentTitle.icon}</span>}
+                                    color={currentTitle.color.replace('text-', '#').replace('-400', '')}
+                                    subtext={currentTitle.personality}
+                                />
+                                <InfoCard
+                                    label="Seviye"
+                                    value={`Lv.${userLevel}`}
+                                    icon={<TrendingUp className="w-4 h-4 text-cyan-400" />}
+                                    color="#22d3ee"
+                                    onClick={() => navigate('/leaderboard')}
+                                    subtext="Sıralamayı gör"
+                                />
+                                <InfoCard
+                                    label="Toplam XP"
+                                    value={userXP.toLocaleString()}
+                                    icon={<Sparkles className="w-4 h-4 text-yellow-400" />}
+                                    color="#fbbf24"
+                                    subtext={`${xpRemaining} XP kaldı`}
+                                />
                             </div>
 
                             {/* Character Description */}
-                            <div className="bg-dark-900/40 backdrop-blur rounded-xl p-4 border border-dark-600 text-center">
+                            <div className="bg-dark-900/40 backdrop-blur rounded-xl p-4 border border-dark-600 text-center mb-6">
                                 <p className="text-gray-300 text-sm italic">"{currentTitle.description}"</p>
                             </div>
 
-                            {/* Next Title Progress */}
-                            {nextTitle && (
-                                <div className="mt-4 p-4 bg-dark-900/40 backdrop-blur rounded-xl border border-dark-600">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xl">{nextTitle.emoji}</span>
-                                            <div>
-                                                <p className="text-xs text-gray-400">Sonraki Unvan</p>
-                                                <p className={`font-bold ${nextTitle.color}`}>{nextTitle.name}</p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-lg font-bold text-white">{nextTitle.minLevel - userLevel}</p>
-                                            <p className="text-xs text-gray-400">level kaldı</p>
-                                        </div>
-                                    </div>
-                                    <div className="w-full bg-dark-700 rounded-full h-2 overflow-hidden">
-                                        <div
-                                            className={`h-2 rounded-full bg-gradient-to-r ${nextTitle.gradient}`}
-                                            style={{ width: `${((userLevel - currentTitle.minLevel) / (currentTitle.maxLevel - currentTitle.minLevel + 1)) * 100}%` }}
-                                        ></div>
-                                    </div>
+                            {/* Title Journey - All Characters */}
+                            <div className="pt-6 border-t border-dark-600">
+                                <h4 className="text-sm font-medium text-gray-400 text-center mb-6">Unvan Yolculuğu</h4>
+                                <div className="flex justify-center items-center gap-4">
+                                    {TITLES.map((title, index) => {
+                                        const isActive = index === currentTitleIndex;
+                                        const isPast = index < currentTitleIndex;
+                                        const isFuture = index > currentTitleIndex;
+
+                                        return (
+                                            <React.Fragment key={title.key}>
+                                                <InteractiveCharacter
+                                                    title={title}
+                                                    isActive={isActive}
+                                                    isPast={isPast}
+                                                    isFuture={isFuture}
+                                                    size="small"
+                                                />
+                                                {index < TITLES.length - 1 && (
+                                                    <ChevronRight className={`w-4 h-4 ${isPast ? 'text-gray-500' : 'text-gray-700'
+                                                        }`} />
+                                                )}
+                                            </React.Fragment>
+                                        );
+                                    })}
                                 </div>
-                            )}
-                        </div>
-                    </div>
 
-                    {/* TITLE JOURNEY - Simple Icons */}
-                    <div className="bg-dark-800 rounded-xl p-5 border border-dark-700">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-6">
-                            <Crown className="w-5 h-5 text-purple-500" />
-                            Unvan Yolculuğu
-                        </h3>
-
-                        <div className="relative py-4">
-                            {/* Progress line */}
-                            <div className="absolute top-1/2 left-8 right-8 h-1 bg-dark-700 rounded-full -translate-y-1/2"></div>
-                            <div
-                                className="absolute top-1/2 left-8 h-1 bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 rounded-full -translate-y-1/2 transition-all duration-1000"
-                                style={{ width: `calc(${Math.min(((userLevel - 1) / 30) * 100, 100)}% - 32px)` }}
-                            ></div>
-
-                            <div className="flex justify-between relative">
-                                {TITLES.map((title) => {
-                                    const isActive = userLevel >= title.minLevel && userLevel <= title.maxLevel;
-                                    const isPast = userLevel > title.maxLevel;
-
-                                    return (
-                                        <div key={title.name} className="flex flex-col items-center z-10 group cursor-pointer">
-                                            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-all duration-300 group-hover:scale-110 ${isActive
-                                                    ? `bg-gradient-to-br ${title.gradient} shadow-lg ${title.glow} ring-2 ring-white/30`
-                                                    : isPast
-                                                        ? `${title.bg} opacity-80`
-                                                        : 'bg-dark-700 opacity-40'
-                                                }`}>
-                                                {title.icon}
-                                            </div>
-                                            <span className={`mt-2 text-xs font-medium transition-colors ${isActive ? title.color : isPast ? 'text-gray-400' : 'text-gray-600'}`}>
-                                                {title.name}
-                                            </span>
-                                            <span className="text-[10px] text-gray-500">
-                                                Lv.{title.minLevel}+
-                                            </span>
-                                        </div>
-                                    );
-                                })}
+                                {/* Next level info */}
+                                {nextTitle && (
+                                    <div className="mt-6 text-center">
+                                        <p className="text-xs text-gray-500">
+                                            <span className={nextTitle.color}>{nextTitle.name}</span> olmak için{' '}
+                                            <span className="text-white font-bold">{nextTitle.minLevel - userLevel}</span> level kaldı
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
