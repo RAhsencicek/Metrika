@@ -150,13 +150,13 @@ const ProjectsPage: React.FC = () => {
             <div className="flex bg-dark-900 rounded-lg p-1 border border-dark-600">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p - 2 rounded ${viewMode === 'grid' ? 'bg-dark-700 text-white' : 'text-gray-400 hover:text-white'} `}
+                className={`p-2 rounded ${viewMode === 'grid' ? 'bg-dark-700 text-white' : 'text-gray-400 hover:text-white'}`}
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p - 2 rounded ${viewMode === 'list' ? 'bg-dark-700 text-white' : 'text-gray-400 hover:text-white'} `}
+                className={`p-2 rounded ${viewMode === 'list' ? 'bg-dark-700 text-white' : 'text-gray-400 hover:text-white'}`}
               >
                 <List className="w-4 h-4" />
               </button>
@@ -176,21 +176,21 @@ const ProjectsPage: React.FC = () => {
             return (
               <div
                 key={project.id}
-                onClick={() => navigate(`/ projects / ${project.id} `)}
+                onClick={() => navigate(`/projects/${project.id}`)}
                 className="bg-dark-800 rounded-xl border border-dark-700 hover:border-primary/50 transition-all cursor-pointer group overflow-hidden"
               >
                 {/* Color Bar */}
-                <div className={`h - 1 ${colors.bg} `}></div>
+                <div className={`h-1 ${colors.bg}`}></div>
 
                 <div className="p-6">
                   {/* Header */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={`text - xs px - 2 py - 1 rounded - full border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border} `}>
+                        <span className={`text-xs px-2 py-1 rounded-full border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}>
                           {statusConfig.label}
                         </span>
-                        <span className={`text - xs px - 2 py - 1 rounded - full border ${methodologyClasses[project.methodology]} `}>
+                        <span className={`text-xs px-2 py-1 rounded-full border ${methodologyClasses[project.methodology]}`}>
                           {project.methodology}
                         </span>
                       </div>
@@ -215,8 +215,8 @@ const ProjectsPage: React.FC = () => {
                     </div>
                     <div className="w-full bg-dark-700 rounded-full h-2">
                       <div
-                        className={`h - 2 rounded - full ${colors.bg} transition - all`}
-                        style={{ width: `${project.progress}% ` }}
+                        className={`h-2 rounded-full ${colors.bg} transition-all`}
+                        style={{ width: `${project.progress}%` }}
                       ></div>
                     </div>
                   </div>

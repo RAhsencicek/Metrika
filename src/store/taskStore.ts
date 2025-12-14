@@ -18,7 +18,7 @@ interface TaskState {
     logHours: (id: string, hours: number) => void;
 }
 
-// Initial mock tasks
+// Initial mock tasks - with current dates for calendar visibility
 const initialTasks: Task[] = [
     {
         id: '1',
@@ -28,11 +28,11 @@ const initialTasks: Task[] = [
         priority: 'High',
         projectId: '1',
         assigneeId: '2',
-        dueDate: '2023-06-15',
+        dueDate: '2025-12-16',
         tags: ['Backend', 'Dokümantasyon'],
         estimatedHours: 16,
         loggedHours: 10,
-        createdAt: '2023-06-01',
+        createdAt: '2025-12-01',
         updatedAt: new Date().toISOString(),
     },
     {
@@ -43,11 +43,11 @@ const initialTasks: Task[] = [
         priority: 'Medium',
         projectId: '1',
         assigneeId: '5',
-        dueDate: '2023-06-18',
+        dueDate: '2025-12-18',
         tags: ['UI/UX', 'Tasarım'],
         estimatedHours: 24,
         loggedHours: 20,
-        createdAt: '2023-05-28',
+        createdAt: '2025-11-28',
         updatedAt: new Date().toISOString(),
     },
     {
@@ -58,11 +58,11 @@ const initialTasks: Task[] = [
         priority: 'High',
         projectId: '2',
         assigneeId: '3',
-        dueDate: '2023-06-20',
+        dueDate: '2025-12-20',
         tags: ['Mobile', 'Firebase'],
         estimatedHours: 20,
         loggedHours: 0,
-        createdAt: '2023-06-05',
+        createdAt: '2025-12-05',
         updatedAt: new Date().toISOString(),
     },
     {
@@ -73,11 +73,11 @@ const initialTasks: Task[] = [
         priority: 'Urgent',
         projectId: '4',
         assigneeId: '4',
-        dueDate: '2023-06-12',
+        dueDate: '2025-12-15',
         tags: ['Database', 'Performance'],
         estimatedHours: 12,
         loggedHours: 8,
-        createdAt: '2023-06-02',
+        createdAt: '2025-12-02',
         updatedAt: new Date().toISOString(),
     },
     {
@@ -88,11 +88,11 @@ const initialTasks: Task[] = [
         priority: 'Medium',
         projectId: '1',
         assigneeId: '6',
-        dueDate: '2023-06-25',
+        dueDate: '2025-12-25',
         tags: ['QA', 'Test'],
         estimatedHours: 32,
         loggedHours: 0,
-        createdAt: '2023-06-08',
+        createdAt: '2025-12-08',
         updatedAt: new Date().toISOString(),
     },
     {
@@ -103,12 +103,12 @@ const initialTasks: Task[] = [
         priority: 'High',
         projectId: '1',
         assigneeId: '2',
-        dueDate: '2023-06-10',
+        dueDate: '2025-12-10',
         tags: ['Backend', 'Payment'],
         estimatedHours: 40,
         loggedHours: 38,
-        createdAt: '2023-05-15',
-        updatedAt: '2023-06-10',
+        createdAt: '2025-11-15',
+        updatedAt: '2025-12-10',
     },
     {
         id: '7',
@@ -118,11 +118,11 @@ const initialTasks: Task[] = [
         priority: 'Low',
         projectId: '6',
         assigneeId: '5',
-        dueDate: '2023-06-22',
+        dueDate: '2025-12-22',
         tags: ['Frontend', 'CSS'],
         estimatedHours: 16,
         loggedHours: 14,
-        createdAt: '2023-06-04',
+        createdAt: '2025-12-04',
         updatedAt: new Date().toISOString(),
     },
     {
@@ -133,12 +133,12 @@ const initialTasks: Task[] = [
         priority: 'Medium',
         projectId: '2',
         assigneeId: '3',
-        dueDate: '2023-06-08',
+        dueDate: '2025-12-08',
         tags: ['Mobile', 'Auth'],
         estimatedHours: 24,
         loggedHours: 22,
-        createdAt: '2023-05-20',
-        updatedAt: '2023-06-08',
+        createdAt: '2025-11-20',
+        updatedAt: '2025-12-08',
     },
 ];
 

@@ -1,18 +1,74 @@
-import React from 'react';
-import { Bell, Mail, Search } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Bell, Mail, Search, Menu, FolderOpen, CheckSquare } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useUserStore, useNotificationStore } from '../store';
+import { useUserStore, useNotificationStore, useUIStore, useProjectStore, useTaskStore } from '../store';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser } = useUserStore();
+  const { currentUser, users } = useUserStore();
+  const { projects } = useProjectStore();
+  const { tasks } = useTaskStore();
   const unreadCount = useNotificationStore((state) => state.getUnreadCount());
+  const { toggleSidebar } = useUIStore();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Search results
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return { projects: [], tasks: [], users: [] };
+
+    const query = searchQuery.toLowerCase();
+
+    const matchedProjects = projects
+      .filter(p => p.title.toLowerCase().includes(query) || p.description?.toLowerCase().includes(query))
+      .slice(0, 3);
+
+    const matchedTasks = tasks
+      .filter(t => t.title.toLowerCase().includes(query) || t.description.toLowerCase().includes(query))
+      .slice(0, 3);
+
+    const matchedUsers = users
+      .filter(u => u.name.toLowerCase().includes(query) || u.role.toLowerCase().includes(query))
+      .slice(0, 3);
+
+    return { projects: matchedProjects, tasks: matchedTasks, users: matchedUsers };
+  }, [searchQuery, projects, tasks, users]);
+
+  const hasResults = searchResults.projects.length > 0 || searchResults.tasks.length > 0 || searchResults.users.length > 0;
+
+  // Close search on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Close search on ESC
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSearchOpen(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, []);
+
+  // Handle result click
+  const handleResultClick = (type: string, id: string) => {
+    setSearchOpen(false);
+    setSearchQuery('');
+    navigate(`/${type}/${id}`);
+  };
 
   const getTitle = () => {
     const path = location.pathname;
 
-    // Exact matches
     switch (path) {
       case '/': return 'Dashboard';
       case '/projects': return 'Projeler';
@@ -29,7 +85,6 @@ const Header: React.FC = () => {
       case '/help': return 'Yardım Merkezi';
     }
 
-    // Dynamic routes
     if (path.startsWith('/projects/')) return 'Proje Detayı';
     if (path.startsWith('/tasks/')) return 'Görev Detayı';
     if (path.startsWith('/team/')) return 'Üye Profili';
@@ -40,7 +95,16 @@ const Header: React.FC = () => {
   return (
     <header className="h-16 bg-dark-800 border-b border-dark-700 flex items-center justify-between px-4 sm:px-6 fixed top-0 w-full z-50">
       <div className="flex items-center">
-        <div className="flex items-center cursor-pointer mr-8" onClick={() => navigate('/')}>
+        {/* Hamburger Menu Button - Mobile Only */}
+        <button
+          onClick={toggleSidebar}
+          className="p-2 text-gray-400 hover:text-white hover:bg-dark-700 rounded-lg mr-3 md:hidden transition-colors"
+          aria-label="Menüyü Aç"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+
+        <div className="flex items-center cursor-pointer mr-4 md:mr-8" onClick={() => navigate('/')}>
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mr-2">
             <span className="font-bold text-white text-xl">M</span>
           </div>
@@ -53,15 +117,104 @@ const Header: React.FC = () => {
       </div>
 
       <div className="flex items-center space-x-2 sm:space-x-4">
-        {/* Search Bar - Hidden on small mobile */}
-        <div className="relative hidden md:block mr-4">
+        {/* Search Bar with Dropdown */}
+        <div ref={searchRef} className="relative hidden md:block">
           <input
             type="text"
-            placeholder="Ara..."
-            className="bg-dark-900 border border-dark-600 rounded-full py-1.5 pl-10 pr-4 text-sm focus:outline-none focus:border-primary text-gray-300 w-64"
+            placeholder="Proje, görev veya kişi ara..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setSearchOpen(true);
+            }}
+            onFocus={() => setSearchOpen(true)}
+            className="bg-dark-900 border border-dark-600 rounded-full py-1.5 pl-10 pr-4 text-sm focus:outline-none focus:border-primary text-gray-300 w-72"
           />
           <Search className="w-4 h-4 absolute left-3 top-2 text-gray-500" />
+
+          {/* Search Results Dropdown */}
+          {searchOpen && searchQuery && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-dark-800 border border-dark-700 rounded-xl shadow-xl overflow-hidden z-50">
+              {hasResults ? (
+                <div className="max-h-96 overflow-y-auto">
+                  {/* Projects */}
+                  {searchResults.projects.length > 0 && (
+                    <div className="p-2">
+                      <p className="text-xs text-gray-500 uppercase px-2 py-1">Projeler</p>
+                      {searchResults.projects.map(project => (
+                        <button
+                          key={project.id}
+                          onClick={() => handleResultClick('projects', project.id)}
+                          className="w-full flex items-center px-3 py-2 hover:bg-dark-700 rounded-lg text-left transition-colors"
+                        >
+                          <FolderOpen className="w-4 h-4 text-primary mr-3" />
+                          <div>
+                            <p className="text-sm text-white">{project.title}</p>
+                            <p className="text-xs text-gray-500">{project.methodology}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Tasks */}
+                  {searchResults.tasks.length > 0 && (
+                    <div className="p-2 border-t border-dark-700">
+                      <p className="text-xs text-gray-500 uppercase px-2 py-1">Görevler</p>
+                      {searchResults.tasks.map(task => (
+                        <button
+                          key={task.id}
+                          onClick={() => handleResultClick('tasks', task.id)}
+                          className="w-full flex items-center px-3 py-2 hover:bg-dark-700 rounded-lg text-left transition-colors"
+                        >
+                          <CheckSquare className="w-4 h-4 text-green-400 mr-3" />
+                          <div>
+                            <p className="text-sm text-white">{task.title}</p>
+                            <p className="text-xs text-gray-500">{task.status}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Users */}
+                  {searchResults.users.length > 0 && (
+                    <div className="p-2 border-t border-dark-700">
+                      <p className="text-xs text-gray-500 uppercase px-2 py-1">Ekip Üyeleri</p>
+                      {searchResults.users.map(user => (
+                        <button
+                          key={user.id}
+                          onClick={() => handleResultClick('team', user.id)}
+                          className="w-full flex items-center px-3 py-2 hover:bg-dark-700 rounded-lg text-left transition-colors"
+                        >
+                          <img
+                            src={`https://picsum.photos/id/${user.avatar}/32/32`}
+                            className="w-6 h-6 rounded-full mr-3"
+                            alt={user.name}
+                          />
+                          <div>
+                            <p className="text-sm text-white">{user.name}</p>
+                            <p className="text-xs text-gray-500">{user.role}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-6 text-center">
+                  <Search className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">Sonuç bulunamadı</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Mobile Search Button */}
+        <button className="p-2 text-gray-400 hover:text-white hover:bg-dark-700 rounded-full transition-colors md:hidden">
+          <Search className="w-5 h-5" />
+        </button>
 
         <button
           onClick={() => navigate('/notifications')}
@@ -75,7 +228,7 @@ const Header: React.FC = () => {
           )}
         </button>
 
-        <button className="p-2 text-gray-400 hover:text-white hover:bg-dark-700 rounded-full transition-colors relative">
+        <button className="p-2 text-gray-400 hover:text-white hover:bg-dark-700 rounded-full transition-colors relative hidden sm:block">
           <Mail className="w-5 h-5" />
           <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-dark-800"></span>
         </button>

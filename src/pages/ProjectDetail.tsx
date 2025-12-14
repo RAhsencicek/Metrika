@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-    Plus, MoreHorizontal, Clock, AlertCircle, Download, Trash2,
+    Plus, AlertCircle, Download, Trash2,
     Filter, Search, Mail, Phone, ExternalLink, Target, TrendingUp, DollarSign, FileText
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useProjectStore, useUserStore } from '../store';
 import { projectStatusClasses } from '../utils/colorUtils';
+import KanbanBoard from '../components/KanbanBoard';
 
 const ProjectDetail: React.FC = () => {
     const navigate = useNavigate();
@@ -25,25 +26,6 @@ const ProjectDetail: React.FC = () => {
         { name: 'KPIs', label: 'KPI\'lar' },
         { name: 'Team', label: 'Ekip' }
     ];
-
-    // Mock Kanban Data
-    const tasks = {
-        todo: [
-            { id: 1, title: 'Rakip Analizi', priority: 'High', due: 'Yarın', assignee: 51 },
-            { id: 2, title: 'Logo Tasarım Revizesi', priority: 'Medium', due: '15 Haz', assignee: 52 },
-        ],
-        inProgress: [
-            { id: 3, title: 'Auth Servisi Güncelleme', priority: 'High', due: 'Bugün', assignee: 53 },
-            { id: 4, title: 'Homepage Copywriting', priority: 'Low', due: '20 Haz', assignee: 54 },
-        ],
-        review: [
-            { id: 5, title: 'Mobil UI Testleri', priority: 'Medium', due: 'Dün', assignee: 55 },
-        ],
-        done: [
-            { id: 6, title: 'Proje Başlangıç Toplantısı', priority: 'Low', due: 'Geçen Hafta', assignee: 51 },
-            { id: 7, title: 'Gereksinim Dokümanı', priority: 'High', due: 'Geçen Hafta', assignee: 56 },
-        ]
-    };
 
     // Mock Docs Data
     const documents = [
@@ -72,40 +54,6 @@ const ProjectDetail: React.FC = () => {
         { name: 'Sprint 4', planned: 30, actual: 28 },
         { name: 'Sprint 5', planned: 25, actual: 15 }, // Current
     ];
-
-    const renderKanbanColumn = (title: string, items: any[], color: string) => (
-        <div className="flex-1 min-w-[280px] bg-dark-800 rounded-xl p-4 border border-dark-700 h-full">
-            <div className={`flex items - center justify - between mb - 4 pb - 2 border - b border - ${color} -500 / 30`}>
-                <div className="flex items-center">
-                    <div className={`w - 2 h - 2 rounded - full bg - ${color} -500 mr - 2`}></div>
-                    <h4 className="font-semibold text-white text-sm">{title}</h4>
-                    <span className="ml-2 bg-dark-700 text-gray-400 text-xs px-2 py-0.5 rounded-full">{items.length}</span>
-                </div>
-                <button className="text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
-            </div>
-            <div className="space-y-3">
-                {items.map(task => (
-                    <div key={task.id} onClick={() => navigate('/tasks/1')} className="bg-dark-900 p-3 rounded-lg border border-dark-600 hover:border-primary/50 cursor-pointer shadow-sm group transition-all">
-                        <div className="flex justify-between items-start mb-2">
-                            <span className={`text - [10px] px - 2 py - 0.5 rounded border ${task.priority === 'High' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                                task.priority === 'Medium' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
-                                    'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                } `}>{task.priority}</span>
-                            <button className="text-gray-600 hover:text-white opacity-0 group-hover:opacity-100 transition"><MoreHorizontal className="w-4 h-4" /></button>
-                        </div>
-                        <h5 className="text-sm font-medium text-white mb-3 leading-snug">{task.title}</h5>
-                        <div className="flex items-center justify-between mt-2">
-                            <img src={`https://picsum.photos/id/${task.assignee}/24/24`} className="w-6 h-6 rounded-full border border-dark-700" alt="Assignee" />
-                            <div className="flex items-center text-xs text-gray-500">
-                                <Clock className="w-3 h-3 mr-1" />
-                                {task.due}
-                            </div>
-                        </div >
-                    </div >
-                ))}
-            </div >
-        </div >
-    );
 
     return (
         <div className="pb-20 animate-fade-in h-full flex flex-col">
@@ -184,13 +132,8 @@ const ProjectDetail: React.FC = () => {
                     {/* DYNAMIC CONTENT */}
 
                     {/* TASKS TAB (KANBAN) */}
-                    {activeTab === 'Tasks' && (
-                        <div className="flex overflow-x-auto pb-4 gap-6 h-full items-start">
-                            {renderKanbanColumn('Yapılacaklar', tasks.todo, 'gray')}
-                            {renderKanbanColumn('İşlemde', tasks.inProgress, 'blue')}
-                            {renderKanbanColumn('Kontrol', tasks.review, 'purple')}
-                            {renderKanbanColumn('Tamamlandı', tasks.done, 'green')}
-                        </div>
+                    {activeTab === 'Tasks' && id && (
+                        <KanbanBoard projectId={id} />
                     )}
 
                     {/* OVERVIEW TAB */}
