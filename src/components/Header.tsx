@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Bell, Mail, Search, Menu, FolderOpen, CheckSquare } from 'lucide-react';
+import { Bell, Search, Menu, FolderOpen, CheckSquare } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUserStore, useNotificationStore, useUIStore, useProjectStore, useTaskStore } from '../store';
 
@@ -229,21 +229,17 @@ const Header: React.FC = () => {
           <Search className="w-5 h-5" />
         </button>
 
+        {/* Notification Bell */}
         <button
           onClick={() => navigate('/notifications')}
-          className={`p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-full relative transition-all icon-hover-shake ${bellAnimating ? 'animate-bell-ring' : ''}`}
+          className={`relative p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-full transition-all icon-hover-shake ${bellAnimating ? 'animate-bell-ring' : ''}`}
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 w-5 h-5 gradient-danger rounded-full border-2 border-dark-800 flex items-center justify-center text-[10px] font-bold text-white animate-bounce-in notification-badge">
-              {unreadCount > 9 ? '9+' : unreadCount}
+            <span className="absolute -top-1 right-0 min-w-[20px] h-5 px-1 gradient-danger rounded-full border-2 border-dark-800 flex items-center justify-center text-[10px] font-bold text-white animate-bounce-in">
+              {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
-        </button>
-
-        <button className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-full transition-all relative hidden sm:block icon-hover-bounce">
-          <Mail className="w-5 h-5" />
-          <span className="absolute top-1 right-1 w-2.5 h-2.5 gradient-primary rounded-full border-2 border-dark-800 animate-pulse"></span>
         </button>
 
         <div className="h-8 w-px bg-dark-600 mx-2 hidden sm:block"></div>
