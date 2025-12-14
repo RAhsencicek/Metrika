@@ -1,23 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
     Plus, AlertCircle, Download, Trash2,
-    Filter, Search, Mail, Phone, ExternalLink, Target, TrendingUp, DollarSign, FileText
+    Filter, Search, Mail, Phone, ExternalLink, Target, TrendingUp, DollarSign, FileText,
+    ChevronDown, Edit3, Copy, Archive, MoreHorizontal
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useProjectStore, useUserStore } from '../store';
 import { projectStatusClasses } from '../utils/colorUtils';
 import KanbanBoard from '../components/KanbanBoard';
+import ProjectEditModal from '../components/ProjectEditModal';
 
 const ProjectDetail: React.FC = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
-    const { getProjectById } = useProjectStore();
+    const { getProjectById, deleteProject } = useProjectStore();
     const { getUserById } = useUserStore();
 
     const project = getProjectById(id || '');
 
     const [activeTab, setActiveTab] = useState('Overview');
+    const [actionMenuOpen, setActionMenuOpen] = useState(false);
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const actionMenuRef = useRef<HTMLDivElement>(null);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+                setActionMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Action handlers
+    const handleEdit = () => {
+        setActionMenuOpen(false);
+        setEditModalOpen(true);
+    };
+
+    const handleDelete = () => {
+        setActionMenuOpen(false);
+        if (window.confirm('Bu projeyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
+            deleteProject(id || '');
+            navigate('/projects');
+        }
+    };
+
+    const handleExport = () => {
+        setActionMenuOpen(false);
+        // Create JSON export of project data
+        const exportData = JSON.stringify(project, null, 2);
+        const blob = new Blob([exportData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${project?.title || 'project'}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleDuplicate = () => {
+        setActionMenuOpen(false);
+        alert('Proje kopyalama özelliği yakında eklenecek.');
+    };
+
+    const handleArchive = () => {
+        setActionMenuOpen(false);
+        alert('Proje arşivleme özelliği yakında eklenecek.');
+    };
 
     const tabs = [
         { name: 'Overview', label: 'Genel Bakış' },
@@ -104,12 +157,69 @@ const ProjectDetail: React.FC = () => {
                                     </div>
                                 )}
                             </div>
-                            <button className="bg-primary hover:bg-blue-600 px-4 py-2 rounded-lg text-white text-sm flex items-center shadow-lg shadow-primary/20">
-                                <Plus className="w-4 h-4 mr-2" />
-                                {activeTab === 'Docs' ? 'Dosya Yükle' : activeTab === 'Team' ? 'Üye Ekle' : 'İşlem Yap'}
-                            </button>
+
+                            {/* Action Dropdown Menu */}
+                            <div className="relative" ref={actionMenuRef}>
+                                <button
+                                    onClick={() => setActionMenuOpen(!actionMenuOpen)}
+                                    className="bg-primary hover:bg-blue-600 px-4 py-2 rounded-lg text-white text-sm flex items-center shadow-lg shadow-primary/20"
+                                >
+                                    {activeTab === 'Docs' ? 'Dosya Yükle' : activeTab === 'Team' ? 'Üye Ekle' : 'İşlem Yap'}
+                                    <ChevronDown className={`w-4 h-4 ml-2 transition-transform ${actionMenuOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {actionMenuOpen && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-dark-800 border border-dark-600 rounded-xl shadow-xl z-50 py-1 animate-fade-in">
+                                        <button
+                                            onClick={handleEdit}
+                                            className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-dark-700 hover:text-white transition-colors"
+                                        >
+                                            <Edit3 className="w-4 h-4 mr-3" />
+                                            Projeyi Düzenle
+                                        </button>
+                                        <button
+                                            onClick={handleDuplicate}
+                                            className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-dark-700 hover:text-white transition-colors"
+                                        >
+                                            <Copy className="w-4 h-4 mr-3" />
+                                            Kopyala
+                                        </button>
+                                        <button
+                                            onClick={handleExport}
+                                            className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-dark-700 hover:text-white transition-colors"
+                                        >
+                                            <Download className="w-4 h-4 mr-3" />
+                                            Dışa Aktar (JSON)
+                                        </button>
+                                        <button
+                                            onClick={handleArchive}
+                                            className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-dark-700 hover:text-white transition-colors"
+                                        >
+                                            <Archive className="w-4 h-4 mr-3" />
+                                            Arşivle
+                                        </button>
+                                        <div className="border-t border-dark-600 my-1"></div>
+                                        <button
+                                            onClick={handleDelete}
+                                            className="w-full flex items-center px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                                        >
+                                            <Trash2 className="w-4 h-4 mr-3" />
+                                            Projeyi Sil
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
+
+                    {/* Project Edit Modal */}
+                    {project && (
+                        <ProjectEditModal
+                            isOpen={editModalOpen}
+                            onClose={() => setEditModalOpen(false)}
+                            project={project}
+                        />
+                    )}
 
                     {/* Navigation Tabs */}
                     <div className="border-b border-dark-700 mb-8 shrink-0">

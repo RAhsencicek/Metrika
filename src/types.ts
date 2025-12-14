@@ -17,6 +17,11 @@ export interface User {
   joinDate: string;
   skills?: Skill[];
   badges?: Badge[];
+  // Gamification fields
+  currentStreak?: number;
+  longestStreak?: number;
+  lastActiveDate?: string;
+  unlockedAchievements?: string[];
 }
 
 export interface Skill {

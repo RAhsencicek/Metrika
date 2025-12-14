@@ -34,6 +34,10 @@ const initialUsers: User[] = [
         rank: 1,
         bio: 'Proje yönetimi ve takım liderliği konusunda 10 yıllık deneyim.',
         joinDate: '2020-01-15',
+        currentStreak: 12,
+        longestStreak: 24,
+        lastActiveDate: new Date().toISOString(),
+        unlockedAchievements: ['first_task', 'task_hunter', 'streak_starter', 'level_5'],
     },
     {
         id: '2',

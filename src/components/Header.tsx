@@ -14,7 +14,17 @@ const Header: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [bellAnimating, setBellAnimating] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Animate bell when unread count changes
+  useEffect(() => {
+    if (unreadCount > 0) {
+      setBellAnimating(true);
+      const timer = setTimeout(() => setBellAnimating(false), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [unreadCount]);
 
   // Search results
   const searchResults = useMemo(() => {
@@ -75,7 +85,7 @@ const Header: React.FC = () => {
       case '/projects/new': return 'Yeni Proje Oluşturma';
       case '/tasks': return 'Görevler';
       case '/documents/analysis': return 'Yapay Zeka Doküman Analizi';
-      case '/gamification': return 'Oyunlaştırma Profili';
+      case '/gamification': return 'Başarılarım';
       case '/leaderboard': return 'Liderlik Tablosu';
       case '/notifications': return 'Bildirimler';
       case '/settings': return 'Ayarlar';
@@ -93,25 +103,28 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="h-16 bg-dark-800 border-b border-dark-700 flex items-center justify-between px-4 sm:px-6 fixed top-0 w-full z-50">
-      <div className="flex items-center">
+    <header className="h-16 glass-strong border-b border-dark-700/50 flex items-center justify-between px-4 sm:px-6 fixed top-0 right-0 left-0 md:left-64 z-40">
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 gradient-mesh opacity-30 pointer-events-none" />
+
+      <div className="flex items-center relative z-10">
         {/* Hamburger Menu Button - Mobile Only */}
         <button
           onClick={toggleSidebar}
-          className="p-2 text-gray-400 hover:text-white hover:bg-dark-700 rounded-lg mr-3 md:hidden transition-colors"
+          className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-lg mr-3 md:hidden transition-all hover-scale"
           aria-label="Menüyü Aç"
         >
           <Menu className="w-6 h-6" />
         </button>
 
-        <div className="flex items-center cursor-pointer mr-4 md:mr-8" onClick={() => navigate('/')}>
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mr-2">
-            <span className="font-bold text-white text-xl">M</span>
+        {/* Mobile Logo */}
+        <div className="flex items-center cursor-pointer mr-4 md:hidden" onClick={() => navigate('/')}>
+          <div className="w-7 h-7 gradient-primary rounded-lg flex items-center justify-center mr-2 shadow-md shadow-primary/30">
+            <span className="font-bold text-white text-sm">M</span>
           </div>
-          <span className="text-xl font-bold text-white tracking-tight hidden sm:block">Metrika</span>
         </div>
 
-        <h1 className="text-lg font-semibold text-white ml-4 sm:ml-0 hidden md:block">
+        <h1 className="text-lg font-semibold text-white">
           {getTitle()}
         </h1>
       </div>
@@ -212,42 +225,48 @@ const Header: React.FC = () => {
         </div>
 
         {/* Mobile Search Button */}
-        <button className="p-2 text-gray-400 hover:text-white hover:bg-dark-700 rounded-full transition-colors md:hidden">
+        <button className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-full transition-all md:hidden icon-hover-bounce">
           <Search className="w-5 h-5" />
         </button>
 
         <button
           onClick={() => navigate('/notifications')}
-          className="p-2 text-gray-400 hover:text-white hover:bg-dark-700 rounded-full relative transition-colors"
+          className={`p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-full relative transition-all icon-hover-shake ${bellAnimating ? 'animate-bell-ring' : ''}`}
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 rounded-full border-2 border-dark-800 flex items-center justify-center text-[10px] font-bold text-white">
+            <span className="absolute -top-0.5 -right-0.5 w-5 h-5 gradient-danger rounded-full border-2 border-dark-800 flex items-center justify-center text-[10px] font-bold text-white animate-bounce-in notification-badge">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </button>
 
-        <button className="p-2 text-gray-400 hover:text-white hover:bg-dark-700 rounded-full transition-colors relative hidden sm:block">
+        <button className="p-2 text-gray-400 hover:text-white hover:bg-dark-700/50 rounded-full transition-all relative hidden sm:block icon-hover-bounce">
           <Mail className="w-5 h-5" />
-          <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-dark-800"></span>
+          <span className="absolute top-1 right-1 w-2.5 h-2.5 gradient-primary rounded-full border-2 border-dark-800 animate-pulse"></span>
         </button>
 
         <div className="h-8 w-px bg-dark-600 mx-2 hidden sm:block"></div>
 
         <div
-          className="flex items-center cursor-pointer hover:bg-dark-700 p-1.5 rounded-lg transition-colors"
+          className="flex items-center cursor-pointer hover:bg-dark-700/50 p-1.5 rounded-lg transition-all group hover-scale"
           onClick={() => navigate('/gamification')}
         >
           <div className="text-right mr-3 hidden sm:block">
-            <div className="text-sm font-medium text-white">{currentUser?.name || 'Kullanıcı'}</div>
-            <div className="text-xs text-primary">Seviye {currentUser?.level || 1}</div>
+            <div className="text-sm font-medium text-white group-hover:text-gradient transition-all">{currentUser?.name || 'Kullanıcı'}</div>
+            <div className="text-xs text-primary flex items-center justify-end gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+              Seviye {currentUser?.level || 1}
+            </div>
           </div>
-          <img
-            src={`https://picsum.photos/id/${currentUser?.avatar || 64}/100/100`}
-            alt="Profile"
-            className="w-8 h-8 rounded-full border border-dark-600"
-          />
+          <div className="relative">
+            <img
+              src={`https://picsum.photos/id/${currentUser?.avatar || 64}/100/100`}
+              alt="Profile"
+              className="w-8 h-8 rounded-full border-2 border-primary/50 group-hover:border-primary transition-all group-hover:shadow-lg group-hover:shadow-primary/30"
+            />
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-dark-800"></span>
+          </div>
         </div>
       </div>
     </header>

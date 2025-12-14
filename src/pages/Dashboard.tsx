@@ -57,7 +57,7 @@ const Dashboard: React.FC = () => {
     <div className="space-y-6 animate-fade-in pb-10">
       {/* Welcome & Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-primary/20 to-primary/5 p-6 rounded-2xl border border-primary/20 flex flex-col justify-between">
+        <div className="bg-gradient-to-br from-primary/20 to-primary/5 p-6 rounded-2xl border border-primary/20 flex flex-col justify-between hover-lift card-shine">
           <div>
             <h2 className="text-xl font-bold text-white mb-1">
               Hoş Geldiniz, {currentUser?.name?.split(' ')[0] || 'Kullanıcı'}!
@@ -66,47 +66,47 @@ const Dashboard: React.FC = () => {
           </div>
           <button
             onClick={() => navigate('/projects/new')}
-            className="mt-4 flex items-center justify-center w-full py-2 bg-primary hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-medium"
+            className="mt-4 flex items-center justify-center w-full py-2 gradient-primary hover:opacity-90 text-white rounded-lg transition-all text-sm font-medium shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02]"
           >
             <Plus className="w-4 h-4 mr-2" />
             Yeni Proje
           </button>
         </div>
 
-        <div className="bg-dark-800 p-6 rounded-2xl border border-dark-700">
+        <div className="bg-dark-800 p-6 rounded-2xl border border-dark-700 hover-lift card-shine animate-fade-in stagger-1" style={{ animationFillMode: 'both' }}>
           <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
+            <div className="p-2 bg-blue-500/10 rounded-lg icon-hover-bounce">
               <TrendingUp className="w-5 h-5 text-blue-500" />
             </div>
-            <span className="text-xs font-medium text-green-400 bg-green-400/10 px-2 py-1 rounded-full">
+            <span className="text-xs font-medium text-green-400 bg-green-400/10 px-2 py-1 rounded-full animate-pulse">
               +{projects.length > 0 ? Math.round((activeProjects.length / projects.length) * 100) : 0}%
             </span>
           </div>
-          <div className="text-3xl font-bold text-white mb-1">{projects.length}</div>
+          <div className="text-3xl font-bold text-white mb-1 animate-count-up">{projects.length}</div>
           <p className="text-sm text-gray-400">Toplam Proje</p>
         </div>
 
-        <div className="bg-dark-800 p-6 rounded-2xl border border-dark-700">
+        <div className="bg-dark-800 p-6 rounded-2xl border border-dark-700 hover-lift card-shine animate-fade-in stagger-2" style={{ animationFillMode: 'both' }}>
           <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-purple-500/10 rounded-lg">
-              <Zap className="w-5 h-5 text-purple-500" />
+            <div className="p-2 bg-purple-500/10 rounded-lg icon-hover-bounce">
+              <Zap className="w-5 h-5 text-purple-500 animate-float" />
             </div>
             <span className="text-xs font-medium text-green-400 bg-green-400/10 px-2 py-1 rounded-full">
               +{activeTasks.length}
             </span>
           </div>
-          <div className="text-3xl font-bold text-white mb-1">{activeTasks.length}</div>
+          <div className="text-3xl font-bold text-white mb-1 animate-count-up" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>{activeTasks.length}</div>
           <p className="text-sm text-gray-400">Aktif Görevler</p>
         </div>
 
-        <div className="bg-dark-800 p-6 rounded-2xl border border-dark-700">
+        <div className="bg-dark-800 p-6 rounded-2xl border border-dark-700 hover-lift card-shine animate-fade-in stagger-3" style={{ animationFillMode: 'both' }}>
           <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-green-500/10 rounded-lg">
+            <div className="p-2 bg-green-500/10 rounded-lg icon-hover-bounce">
               <CheckCircle className="w-5 h-5 text-green-500" />
             </div>
             <span className="text-xs font-medium text-gray-400">Bu Ay</span>
           </div>
-          <div className="text-3xl font-bold text-white mb-1">{completedTasks.length}</div>
+          <div className="text-3xl font-bold text-white mb-1 animate-count-up" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>{completedTasks.length}</div>
           <p className="text-sm text-gray-400">Tamamlanan Görevler</p>
         </div>
       </div>
@@ -130,23 +130,23 @@ const Dashboard: React.FC = () => {
                 <div
                   key={project.id}
                   onClick={() => navigate(`/projects/${project.id}`)}
-                  className="bg-dark-800 p-5 rounded-xl border border-dark-700 hover:border-primary/50 transition-colors cursor-pointer group"
+                  className="bg-dark-800 p-5 rounded-xl border border-dark-700 hover:border-primary/50 transition-all cursor-pointer group hover-lift card-shine"
                 >
                   <div className="flex justify-between items-start mb-3">
-                    <div className={`w-10 h-10 rounded-full ${colors.bgLight} flex items-center justify-center ${colors.text} font-bold`}>
+                    <div className={`w-10 h-10 rounded-full ${colors.bgLight} flex items-center justify-center ${colors.text} font-bold group-hover:scale-110 transition-transform`}>
                       {project.title.charAt(0)}
                     </div>
-                    <MoreHorizontal className="w-5 h-5 text-gray-500 group-hover:text-white" />
+                    <MoreHorizontal className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
                   </div>
-                  <h4 className="font-semibold text-white mb-1">{project.title}</h4>
+                  <h4 className="font-semibold text-white mb-1 group-hover:text-gradient">{project.title}</h4>
                   <p className="text-xs text-gray-400 mb-4">{project.description.substring(0, 40)}...</p>
 
                   <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
                     <span>İlerleme</span>
                     <span className="text-white">{project.progress}%</span>
                   </div>
-                  <div className="w-full bg-dark-600 rounded-full h-1.5">
-                    <div className={`${colors.bg} h-1.5 rounded-full`} style={{ width: `${project.progress}%` }}></div>
+                  <div className="w-full bg-dark-600 rounded-full h-1.5 overflow-hidden">
+                    <div className={`${colors.bg} h-1.5 rounded-full progress-bar-animated`} style={{ width: `${project.progress}%` }}></div>
                   </div>
                 </div>
               );

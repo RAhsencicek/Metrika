@@ -1,12 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Clock } from 'lucide-react';
 import { useTaskStore, useProjectStore } from '../store';
+import AddEventModal from '../components/AddEventModal';
 
 const CalendarPage: React.FC = () => {
     const { tasks } = useTaskStore();
     const { getProjectById } = useProjectStore();
 
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [isAddEventOpen, setIsAddEventOpen] = useState(false);
+    const [selectedEventDate, setSelectedEventDate] = useState<Date | undefined>(undefined);
 
     // Get current month info
     const currentYear = currentDate.getFullYear();
@@ -106,8 +109,21 @@ const CalendarPage: React.FC = () => {
         orange: 'bg-orange-500/10 text-orange-300 border-orange-500',
     };
 
+    // Open modal for adding event
+    const openAddEvent = (date?: Date) => {
+        setSelectedEventDate(date);
+        setIsAddEventOpen(true);
+    };
+
     return (
         <div className="pb-20 animate-fade-in h-full flex flex-col">
+            {/* Add Event Modal */}
+            <AddEventModal
+                isOpen={isAddEventOpen}
+                onClose={() => setIsAddEventOpen(false)}
+                selectedDate={selectedEventDate}
+            />
+
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                 <h1 className="text-2xl font-bold text-white">Takvim</h1>
                 <div className="flex items-center space-x-3">
@@ -134,7 +150,10 @@ const CalendarPage: React.FC = () => {
                             <ChevronRight className="w-5 h-5 text-gray-400" />
                         </button>
                     </div>
-                    <button className="flex items-center px-4 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-primary/20">
+                    <button
+                        onClick={() => openAddEvent()}
+                        className="flex items-center px-4 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-primary/20"
+                    >
                         <Plus className="w-4 h-4 mr-2" />
                         Etkinlik Ekle
                     </button>
@@ -165,10 +184,10 @@ const CalendarPage: React.FC = () => {
                                     }`}
                             >
                                 <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${today
-                                        ? 'bg-primary text-white shadow-lg shadow-primary/30'
-                                        : dayInfo.isCurrentMonth
-                                            ? 'text-gray-300'
-                                            : 'text-gray-600'
+                                    ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                                    : dayInfo.isCurrentMonth
+                                        ? 'text-gray-300'
+                                        : 'text-gray-600'
                                     }`}>
                                     {dayInfo.day}
                                 </span>
@@ -192,7 +211,14 @@ const CalendarPage: React.FC = () => {
                                 </div>
 
                                 {/* Add Button on Hover */}
-                                <button className="absolute bottom-1 right-1 p-1 rounded-full bg-dark-700 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-white hover:bg-primary transition-all">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        openAddEvent(dayInfo.date);
+                                    }}
+                                    className="absolute bottom-1 right-1 p-1 rounded-full bg-dark-700 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-white hover:bg-primary transition-all"
+                                    title="Bu güne etkinlik ekle"
+                                >
                                     <Plus className="w-3 h-3" />
                                 </button>
                             </div>

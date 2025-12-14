@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Mail, Phone, MoreHorizontal, Plus, Briefcase, MapPin } from 'lucide-react';
 import { useUserStore } from '../store';
+import AddMemberModal from '../components/AddMemberModal';
 
 const TeamPage: React.FC = () => {
     const navigate = useNavigate();
@@ -9,6 +10,7 @@ const TeamPage: React.FC = () => {
 
     const [departmentFilter, setDepartmentFilter] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
     // Get unique departments from users
     const departments = useMemo(() => {
@@ -49,6 +51,12 @@ const TeamPage: React.FC = () => {
 
     return (
         <div className="pb-20 animate-fade-in">
+            {/* Add Member Modal */}
+            <AddMemberModal
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+            />
+
             <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-white">Ekip Üyeleri</h1>
@@ -57,7 +65,10 @@ const TeamPage: React.FC = () => {
                         <span className="text-white ml-1">{users.length} üye</span>
                     </p>
                 </div>
-                <button className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center transition shadow-lg shadow-primary/20">
+                <button
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center transition shadow-lg shadow-primary/20"
+                >
                     <Plus className="w-4 h-4 mr-2" />
                     Yeni Kişi Ekle
                 </button>
