@@ -47,6 +47,16 @@ export interface SuggestedAction {
     taskId?: string;
 }
 
+// Custom action type for user-defined actions (notes about the document)
+export interface CustomAction {
+    id: string;
+    text: string;
+    priority: 'low' | 'medium' | 'high';
+    addedAsTask: boolean;
+    taskId?: string;
+    createdAt: string;
+}
+
 export interface DocumentAnalysis {
     id: string;
     documentId: string;
@@ -56,6 +66,7 @@ export interface DocumentAnalysis {
     findings: Finding[];
     risks: Risk[];
     suggestedActions: SuggestedAction[];
+    customActions: CustomAction[]; // User's own actions/notes about the document
     tags: string[];
     analyzedAt: string;
     savedAt?: string;
@@ -77,10 +88,11 @@ interface DocumentState {
 
     // Document Actions
     setDocuments: (documents: Document[]) => void;
-    addDocument: (document: Omit<Document, 'id' | 'uploadDate' | 'lastModified'>) => Document;
+    addDocument: (document: Omit<Document, 'uploadDate' | 'lastModified'> & { id?: string }) => Document;
     updateDocument: (id: string, updates: Partial<Document>) => void;
     deleteDocument: (id: string) => void;
     getDocumentById: (id: string) => Document | undefined;
+    getDocumentsByProject: (projectId: string) => Document[]; // Yeni: Proje bazlı filtreleme
 
     // Analysis Actions
     setAnalyses: (analyses: DocumentAnalysis[]) => void;
@@ -93,6 +105,11 @@ interface DocumentState {
 
     // Suggested Action -> Task
     markActionAsTask: (analysisId: string, actionId: string, taskId: string) => void;
+
+    // Custom Actions (user's own actions/notes)
+    addCustomAction: (analysisId: string, action: Omit<CustomAction, 'id' | 'createdAt' | 'addedAsTask'>) => CustomAction;
+    removeCustomAction: (analysisId: string, actionId: string) => void;
+    markCustomActionAsTask: (analysisId: string, actionId: string, taskId: string) => void;
 
     // Share functionality
     generateShareLink: (analysisId: string) => string;
@@ -119,11 +136,12 @@ interface DocumentState {
 // This simulates what backend would return
 
 const mockDocuments: Document[] = [
+    // Proje 1: E-Ticaret Platformu Yenileme
     {
         id: 'doc-1',
         name: 'SatisStratejisi_2023.pdf',
         type: 'PDF',
-        size: 2516582, // ~2.4 MB
+        size: 2516582,
         sizeFormatted: '2.4 MB',
         url: '/documents/SatisStratejisi_2023.pdf',
         uploaderId: '1',
@@ -136,7 +154,7 @@ const mockDocuments: Document[] = [
         id: 'doc-2',
         name: 'PazarArastirmasi.docx',
         type: 'DOCX',
-        size: 1258291, // ~1.2 MB
+        size: 1258291,
         sizeFormatted: '1.2 MB',
         url: '/documents/PazarArastirmasi.docx',
         uploaderId: '2',
@@ -146,16 +164,139 @@ const mockDocuments: Document[] = [
         tags: ['Pazar', 'Araştırma'],
     },
     {
+        id: 'doc-4',
+        name: 'Teknik_Spec_v2.pdf',
+        type: 'PDF',
+        size: 4404019,
+        sizeFormatted: '4.2 MB',
+        url: '/documents/Teknik_Spec_v2.pdf',
+        uploaderId: '2',
+        projectId: '1',
+        uploadDate: '2023-05-15T09:00:00Z',
+        lastModified: '2023-05-15T09:00:00Z',
+        tags: ['Teknik', 'Spesifikasyon'],
+    },
+    {
+        id: 'doc-5',
+        name: 'API_Endpoints.docx',
+        type: 'DOCX',
+        size: 1887436,
+        sizeFormatted: '1.8 MB',
+        url: '/documents/API_Endpoints.docx',
+        uploaderId: '2',
+        projectId: '1',
+        uploadDate: '2023-05-18T14:30:00Z',
+        lastModified: '2023-05-18T14:30:00Z',
+        tags: ['API', 'Backend', 'Dokümantasyon'],
+    },
+    // Proje 2: Mobil Uygulama MVP
+    {
+        id: 'doc-6',
+        name: 'MobilUX_Tasarimi.pdf',
+        type: 'PDF',
+        size: 3145728,
+        sizeFormatted: '3.0 MB',
+        url: '/documents/MobilUX_Tasarimi.pdf',
+        uploaderId: '5',
+        projectId: '2',
+        uploadDate: '2023-06-01T11:00:00Z',
+        lastModified: '2023-06-01T11:00:00Z',
+        tags: ['UX', 'Tasarım', 'Mobil'],
+    },
+    {
+        id: 'doc-7',
+        name: 'Kullanici_Hikayeleri.docx',
+        type: 'DOCX',
+        size: 983040,
+        sizeFormatted: '960 KB',
+        url: '/documents/Kullanici_Hikayeleri.docx',
+        uploaderId: '3',
+        projectId: '2',
+        uploadDate: '2023-06-05T10:00:00Z',
+        lastModified: '2023-06-05T10:00:00Z',
+        tags: ['User Stories', 'Agile'],
+    },
+    // Proje 3: Veri Ambarı Projesi
+    {
         id: 'doc-3',
         name: 'FinansalRapor_Q2.xlsx',
         type: 'XLSX',
-        size: 524288, // ~512 KB
+        size: 524288,
         sizeFormatted: '512 KB',
         url: '/documents/FinansalRapor_Q2.xlsx',
         uploaderId: '3',
+        projectId: '3',
         uploadDate: '2023-06-01T09:00:00Z',
         lastModified: '2023-06-01T09:00:00Z',
         tags: ['Finans', 'Q2', 'Rapor'],
+    },
+    {
+        id: 'doc-8',
+        name: 'VeriModeli_ERD.pdf',
+        type: 'PDF',
+        size: 2097152,
+        sizeFormatted: '2.0 MB',
+        url: '/documents/VeriModeli_ERD.pdf',
+        uploaderId: '4',
+        projectId: '3',
+        uploadDate: '2023-06-10T15:00:00Z',
+        lastModified: '2023-06-10T15:00:00Z',
+        tags: ['Veri', 'ERD', 'Veritabanı'],
+    },
+    // Proje 4: CRM Sistemi Modernizasyonu
+    {
+        id: 'doc-9',
+        name: 'CRM_Gereksinimler.docx',
+        type: 'DOCX',
+        size: 1572864,
+        sizeFormatted: '1.5 MB',
+        url: '/documents/CRM_Gereksinimler.docx',
+        uploaderId: '1',
+        projectId: '4',
+        uploadDate: '2023-06-15T09:30:00Z',
+        lastModified: '2023-06-15T09:30:00Z',
+        tags: ['CRM', 'Gereksinimler'],
+    },
+    // Proje 5: Yapay Zeka Chatbot
+    {
+        id: 'doc-10',
+        name: 'AI_Model_Dokumani.pdf',
+        type: 'PDF',
+        size: 4194304,
+        sizeFormatted: '4.0 MB',
+        url: '/documents/AI_Model_Dokumani.pdf',
+        uploaderId: '6',
+        projectId: '5',
+        uploadDate: '2023-06-20T14:00:00Z',
+        lastModified: '2023-06-20T14:00:00Z',
+        tags: ['AI', 'Model', 'Chatbot'],
+    },
+    {
+        id: 'doc-11',
+        name: 'Egitim_Verileri_Analizi.xlsx',
+        type: 'XLSX',
+        size: 1048576,
+        sizeFormatted: '1.0 MB',
+        url: '/documents/Egitim_Verileri_Analizi.xlsx',
+        uploaderId: '6',
+        projectId: '5',
+        uploadDate: '2023-06-22T11:00:00Z',
+        lastModified: '2023-06-22T11:00:00Z',
+        tags: ['AI', 'Veri', 'Analiz'],
+    },
+    // Proje 6: Bulut Altyapı Geçişi
+    {
+        id: 'doc-12',
+        name: 'BulutMigrasyon_Plani.pdf',
+        type: 'PDF',
+        size: 2621440,
+        sizeFormatted: '2.5 MB',
+        url: '/documents/BulutMigrasyon_Plani.pdf',
+        uploaderId: '7',
+        projectId: '6',
+        uploadDate: '2023-06-25T10:00:00Z',
+        lastModified: '2023-06-25T10:00:00Z',
+        tags: ['Cloud', 'Migrasyon', 'Altyapı'],
     },
 ];
 
@@ -181,6 +322,7 @@ const mockAnalyses: DocumentAnalysis[] = [
             { id: 'sa2', text: 'Rakip analizini Q3 verileriyle güncelle', priority: 'high', addedAsTask: false },
             { id: 'sa3', text: 'Kaynak planlaması detaylandırılmalı', priority: 'medium', addedAsTask: false },
         ],
+        customActions: [],
         tags: ['KOBİ', 'Pazarlama', 'Bütçe Artışı', 'Satış Hedefi', 'Rekabet Analizi'],
         analyzedAt: '2023-05-12T11:00:00Z',
         savedAt: '2023-05-12T11:30:00Z',
@@ -203,6 +345,7 @@ const mockAnalyses: DocumentAnalysis[] = [
         suggestedActions: [
             { id: 'sa4', text: 'Daha geniş örneklem ile tekrar anket yap', priority: 'medium', addedAsTask: false },
         ],
+        customActions: [],
         tags: ['Pazar Araştırması', 'Müşteri Analizi'],
         analyzedAt: '2023-05-05T15:00:00Z',
         aiModel: 'gpt-4',
@@ -229,7 +372,7 @@ export const useDocumentStore = create<DocumentState>()(
                 const now = new Date().toISOString();
                 const newDocument: Document = {
                     ...documentData,
-                    id: `doc-${crypto.randomUUID()}`,
+                    id: documentData.id || `doc-${crypto.randomUUID()}`, // Use provided ID or generate new one
                     uploadDate: now,
                     lastModified: now,
                 };
@@ -257,6 +400,8 @@ export const useDocumentStore = create<DocumentState>()(
                 })),
 
             getDocumentById: (id) => get().documents.find((doc) => doc.id === id),
+
+            getDocumentsByProject: (projectId) => get().documents.filter((doc) => doc.projectId === projectId),
 
             // Analysis Actions
             setAnalyses: (analyses) => set({ analyses }),
@@ -318,6 +463,85 @@ export const useDocumentStore = create<DocumentState>()(
                             ? {
                                 ...state.currentAnalysis,
                                 suggestedActions: state.currentAnalysis.suggestedActions.map(
+                                    (action) =>
+                                        action.id === actionId
+                                            ? { ...action, addedAsTask: true, taskId }
+                                            : action
+                                ),
+                            }
+                            : state.currentAnalysis,
+                })),
+
+            // Add custom action to analysis
+            addCustomAction: (analysisId, actionData) => {
+                const newAction: CustomAction = {
+                    ...actionData,
+                    id: `custom-${crypto.randomUUID()}`,
+                    createdAt: new Date().toISOString(),
+                    addedAsTask: false,
+                };
+
+                set((state) => ({
+                    analyses: state.analyses.map((analysis) =>
+                        analysis.id === analysisId
+                            ? {
+                                ...analysis,
+                                customActions: [...analysis.customActions, newAction],
+                            }
+                            : analysis
+                    ),
+                    currentAnalysis:
+                        state.currentAnalysis?.id === analysisId
+                            ? {
+                                ...state.currentAnalysis,
+                                customActions: [...state.currentAnalysis.customActions, newAction],
+                            }
+                            : state.currentAnalysis,
+                }));
+
+                return newAction;
+            },
+
+            // Remove custom action from analysis
+            removeCustomAction: (analysisId, actionId) =>
+                set((state) => ({
+                    analyses: state.analyses.map((analysis) =>
+                        analysis.id === analysisId
+                            ? {
+                                ...analysis,
+                                customActions: analysis.customActions.filter((a) => a.id !== actionId),
+                            }
+                            : analysis
+                    ),
+                    currentAnalysis:
+                        state.currentAnalysis?.id === analysisId
+                            ? {
+                                ...state.currentAnalysis,
+                                customActions: state.currentAnalysis.customActions.filter((a) => a.id !== actionId),
+                            }
+                            : state.currentAnalysis,
+                })),
+
+            // Mark custom action as converted to task
+            markCustomActionAsTask: (analysisId, actionId, taskId) =>
+                set((state) => ({
+                    analyses: state.analyses.map((analysis) =>
+                        analysis.id === analysisId
+                            ? {
+                                ...analysis,
+                                customActions: analysis.customActions.map((action) =>
+                                    action.id === actionId
+                                        ? { ...action, addedAsTask: true, taskId }
+                                        : action
+                                ),
+                            }
+                            : analysis
+                    ),
+                    currentAnalysis:
+                        state.currentAnalysis?.id === analysisId
+                            ? {
+                                ...state.currentAnalysis,
+                                customActions: state.currentAnalysis.customActions.map(
                                     (action) =>
                                         action.id === actionId
                                             ? { ...action, addedAsTask: true, taskId }
@@ -488,6 +712,7 @@ ${doc.tags.length > 0 ? doc.tags.map(t => `• ${t}`).join('\n') : '• Henüz e
                                 suggestedActions: [
                                     { id: crypto.randomUUID(), text: 'Dokümanı gözden geçir', priority: 'medium', addedAsTask: false },
                                 ],
+                                customActions: [],
                                 tags: document.tags,
                                 analyzedAt: new Date().toISOString(),
                                 aiModel: 'mock-ai',

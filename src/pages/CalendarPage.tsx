@@ -67,7 +67,9 @@ const CalendarPage: React.FC = () => {
     const getEventsForDate = (date: Date) => {
         const dateStr = date.toISOString().split('T')[0];
         return tasks.filter(task => task.dueDate === dateStr).map(task => {
-            const project = getProjectById(task.projectId);
+            // Birden fazla projeye bağlı olabilir, ilk projeyi göster
+            const firstProjectId = task.projectIds[0];
+            const project = firstProjectId ? getProjectById(firstProjectId) : null;
             return {
                 id: task.id,
                 title: task.title,
@@ -239,12 +241,14 @@ const CalendarPage: React.FC = () => {
                         .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
                         .slice(0, 4)
                         .map(task => {
-                            const project = getProjectById(task.projectId);
+                            // Birden fazla projeye bağlı olabilir, ilk projeyi göster
+                            const firstProjectId = task.projectIds[0];
+                            const project = firstProjectId ? getProjectById(firstProjectId) : null;
                             const daysLeft = Math.ceil((new Date(task.dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
                             return (
                                 <div key={task.id} className="bg-dark-900 p-3 rounded-lg border border-dark-600">
                                     <p className="text-sm font-medium text-white truncate">{task.title}</p>
-                                    <p className="text-xs text-gray-500 mt-1">{project?.title}</p>
+                                    <p className="text-xs text-gray-500 mt-1">{project?.title || 'Projesiz'}</p>
                                     <p className={`text-xs mt-2 ${daysLeft <= 2 ? 'text-red-400' : daysLeft <= 7 ? 'text-yellow-400' : 'text-green-400'}`}>
                                         {daysLeft === 0 ? 'Bugün' : daysLeft === 1 ? 'Yarın' : `${daysLeft} gün kaldı`}
                                     </p>

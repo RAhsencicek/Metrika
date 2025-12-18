@@ -272,7 +272,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, isOpen, onClose, isNew = fa
             description: formData.description,
             status: formData.status as TaskStatus,
             priority: formData.priority as TaskPriority,
-            projectId: projectId,
+            projectIds: [projectId], // Array olarak güncellendi
             assigneeId: formData.assigneeId,
             dueDate: formData.dueDate,
             estimatedHours: formData.estimatedHours,
@@ -484,7 +484,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId }) => {
 
     // Filter tasks for this project
     const projectTasks = useMemo(() => {
-        return tasks.filter(t => t.projectId === projectId);
+        return tasks.filter(t => t.projectIds.includes(projectId));
     }, [tasks, projectId]);
 
     // Group by status

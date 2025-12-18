@@ -23,9 +23,28 @@ const ShareAnalysisModal: React.FC<ShareAnalysisModalProps> = ({ isOpen, onClose
 
     if (!isOpen) return null;
 
-    const handleGenerateLink = () => {
+    const handleGenerateLink = async () => {
         const link = generateShareLink(analysisId);
         setShareLink(link);
+
+        // Auto-copy to clipboard for better UX
+        try {
+            await navigator.clipboard.writeText(link);
+            setCopied(true);
+            addNotification({
+                type: 'success',
+                title: 'Link Oluşturuldu ve Kopyalandı',
+                message: 'Paylaşım linki panoya otomatik olarak kopyalandı.',
+            });
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            // Fallback if clipboard write fails
+            addNotification({
+                type: 'success',
+                title: 'Link Oluşturuldu',
+                message: 'Linki kopyalamak için "Kopyala" butonuna tıklayın.',
+            });
+        }
     };
 
     const handleCopyLink = async () => {

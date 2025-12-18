@@ -16,6 +16,16 @@ interface TaskState {
     getTasksByStatus: (status: TaskStatus) => Task[];
     updateTaskStatus: (id: string, status: TaskStatus) => void;
     logHours: (id: string, hours: number) => void;
+
+    // Document-Task relationship actions
+    getTasksByDocument: (documentId: string) => Task[];
+    addDocumentToTask: (taskId: string, documentId: string) => void;
+    removeDocumentFromTask: (taskId: string, documentId: string) => void;
+
+    // Project-Task relationship actions (Yeni)
+    addTaskToProject: (taskId: string, projectId: string) => void;
+    removeTaskFromProject: (taskId: string, projectId: string) => void;
+    getTasksWithoutProject: () => Task[];
 }
 
 // Initial mock tasks - with current dates for calendar visibility
@@ -26,8 +36,9 @@ const initialTasks: Task[] = [
         description: 'Tüm API endpointleri için Swagger dokümantasyonu oluşturulacak.',
         status: 'In Progress',
         priority: 'High',
-        projectId: '1',
+        projectIds: ['1'], // Array olarak güncellendi
         assigneeId: '2',
+        documentIds: ['doc-1', 'doc-2'],
         dueDate: '2025-12-16',
         tags: ['Backend', 'Dokümantasyon'],
         estimatedHours: 16,
@@ -41,8 +52,9 @@ const initialTasks: Task[] = [
         description: 'Ana sayfa ve ürün detay sayfası tasarımlarının güncellenmesi.',
         status: 'Review',
         priority: 'Medium',
-        projectId: '1',
+        projectIds: ['1', '6'], // Birden fazla projeye bağlı örnek
         assigneeId: '5',
+        documentIds: ['doc-3'],
         dueDate: '2025-12-18',
         tags: ['UI/UX', 'Tasarım'],
         estimatedHours: 24,
@@ -56,7 +68,7 @@ const initialTasks: Task[] = [
         description: 'Firebase ile mobil bildirim sistemi kurulumu.',
         status: 'Done',
         priority: 'High',
-        projectId: '2',
+        projectIds: ['2'],
         assigneeId: '3',
         dueDate: '2025-12-20',
         tags: ['Mobile', 'Firebase'],
@@ -71,7 +83,7 @@ const initialTasks: Task[] = [
         description: 'Yavaş sorguların analizi ve indeks iyileştirmeleri.',
         status: 'Done',
         priority: 'Urgent',
-        projectId: '4',
+        projectIds: ['4'],
         assigneeId: '4',
         dueDate: '2025-12-15',
         tags: ['Database', 'Performance'],
@@ -86,7 +98,7 @@ const initialTasks: Task[] = [
         description: 'Son sprint için UAT senaryolarının hazırlanması ve uygulanması.',
         status: 'Done',
         priority: 'Medium',
-        projectId: '1',
+        projectIds: ['1'],
         assigneeId: '6',
         dueDate: '2025-12-25',
         tags: ['QA', 'Test'],
@@ -101,7 +113,7 @@ const initialTasks: Task[] = [
         description: 'iyzico ve PayTR entegrasyonlarının tamamlanması.',
         status: 'Done',
         priority: 'High',
-        projectId: '1',
+        projectIds: ['1'],
         assigneeId: '2',
         dueDate: '2025-12-10',
         tags: ['Backend', 'Payment'],
@@ -116,7 +128,7 @@ const initialTasks: Task[] = [
         description: 'Mobil ve tablet görünümlerinin iyileştirilmesi.',
         status: 'Done',
         priority: 'Low',
-        projectId: '6',
+        projectIds: ['6'],
         assigneeId: '5',
         dueDate: '2025-12-22',
         tags: ['Frontend', 'CSS'],
@@ -131,7 +143,7 @@ const initialTasks: Task[] = [
         description: 'Kullanıcı giriş ve kayıt işlemleri için yeni akış tasarımı.',
         status: 'Done',
         priority: 'Medium',
-        projectId: '2',
+        projectIds: ['2'],
         assigneeId: '3',
         dueDate: '2025-12-08',
         tags: ['Mobile', 'Auth'],
@@ -146,7 +158,7 @@ const initialTasks: Task[] = [
         description: 'Redis ile cache layer implementasyonu.',
         status: 'Done',
         priority: 'High',
-        projectId: '1',
+        projectIds: ['1', '4'], // Birden fazla projeye bağlı örnek
         assigneeId: '2',
         dueDate: '2025-12-05',
         tags: ['Backend', 'Redis'],
@@ -161,7 +173,7 @@ const initialTasks: Task[] = [
         description: 'Kullanıcı davranış analitiği için dashboard.',
         status: 'Done',
         priority: 'Medium',
-        projectId: '1',
+        projectIds: ['1'],
         assigneeId: '5',
         dueDate: '2025-12-03',
         tags: ['Frontend', 'Analytics'],
@@ -176,7 +188,7 @@ const initialTasks: Task[] = [
         description: 'Transactional email şablonlarının hazırlanması.',
         status: 'Done',
         priority: 'Low',
-        projectId: '3',
+        projectIds: [], // Projesiz görev örneği
         assigneeId: '5',
         dueDate: '2025-12-01',
         tags: ['Design', 'Email'],
@@ -191,7 +203,7 @@ const initialTasks: Task[] = [
         description: 'API güvenliği için rate limiting implementasyonu.',
         status: 'Done',
         priority: 'High',
-        projectId: '1',
+        projectIds: ['1'],
         assigneeId: '2',
         dueDate: '2025-11-28',
         tags: ['Backend', 'Security'],
@@ -206,7 +218,7 @@ const initialTasks: Task[] = [
         description: 'Q1 2026 sprint planlaması.',
         status: 'In Progress',
         priority: 'Medium',
-        projectId: '1',
+        projectIds: ['1'],
         assigneeId: '1',
         dueDate: '2025-12-20',
         tags: ['Management', 'Planning'],
@@ -221,7 +233,7 @@ const initialTasks: Task[] = [
         description: 'Load testing ve stress testing.',
         status: 'Todo',
         priority: 'High',
-        projectId: '4',
+        projectIds: ['4'],
         assigneeId: '4',
         dueDate: '2025-12-22',
         tags: ['QA', 'Performance'],
@@ -268,7 +280,10 @@ export const useTaskStore = create<TaskState>()(
 
             getTaskById: (id) => get().tasks.find(task => task.id === id),
 
-            getTasksByProject: (projectId) => get().tasks.filter(task => task.projectId === projectId),
+            // projectIds array'inde bu projectId var mı kontrol et
+            getTasksByProject: (projectId) => get().tasks.filter(task =>
+                task.projectIds.includes(projectId)
+            ),
 
             getTasksByAssignee: (assigneeId) => get().tasks.filter(task => task.assigneeId === assigneeId),
 
@@ -289,9 +304,100 @@ export const useTaskStore = create<TaskState>()(
                         : task
                 )
             })),
+
+            // Document-Task relationship functions
+            getTasksByDocument: (documentId) => get().tasks.filter(task =>
+                task.documentIds?.includes(documentId)
+            ),
+
+            addDocumentToTask: (taskId, documentId) => set((state) => ({
+                tasks: state.tasks.map(task =>
+                    task.id === taskId
+                        ? {
+                            ...task,
+                            documentIds: task.documentIds
+                                ? task.documentIds.includes(documentId)
+                                    ? task.documentIds
+                                    : [...task.documentIds, documentId]
+                                : [documentId],
+                            updatedAt: new Date().toISOString()
+                        }
+                        : task
+                )
+            })),
+
+            removeDocumentFromTask: (taskId, documentId) => set((state) => ({
+                tasks: state.tasks.map(task =>
+                    task.id === taskId
+                        ? {
+                            ...task,
+                            documentIds: task.documentIds?.filter(id => id !== documentId) || [],
+                            updatedAt: new Date().toISOString()
+                        }
+                        : task
+                )
+            })),
+
+            // Project-Task relationship functions (Yeni)
+            addTaskToProject: (taskId, projectId) => set((state) => ({
+                tasks: state.tasks.map(task =>
+                    task.id === taskId
+                        ? {
+                            ...task,
+                            projectIds: task.projectIds.includes(projectId)
+                                ? task.projectIds
+                                : [...task.projectIds, projectId],
+                            updatedAt: new Date().toISOString()
+                        }
+                        : task
+                )
+            })),
+
+            removeTaskFromProject: (taskId, projectId) => set((state) => ({
+                tasks: state.tasks.map(task =>
+                    task.id === taskId
+                        ? {
+                            ...task,
+                            projectIds: task.projectIds.filter(id => id !== projectId),
+                            updatedAt: new Date().toISOString()
+                        }
+                        : task
+                )
+            })),
+
+            getTasksWithoutProject: () => get().tasks.filter(task =>
+                task.projectIds.length === 0
+            ),
         }),
         {
             name: 'metrika-task-storage',
+            version: 2, // Migration versiyon numarası
+            migrate: (persistedState: unknown, version: number) => {
+                const state = persistedState as { tasks: Task[] } | undefined;
+
+                // Versiyon 1'den 2'ye geçiş: projectId -> projectIds array
+                if (version < 2 && state?.tasks) {
+                    state.tasks = state.tasks.map((task: Task & { projectId?: string }) => {
+                        // Eğer eski projectId varsa ve projectIds yoksa, dönüştür
+                        if (task.projectId && !task.projectIds) {
+                            return {
+                                ...task,
+                                projectIds: [task.projectId],
+                            };
+                        }
+                        // projectIds yoksa boş array olarak ayarla
+                        if (!task.projectIds) {
+                            return {
+                                ...task,
+                                projectIds: [],
+                            };
+                        }
+                        return task;
+                    });
+                }
+
+                return state as TaskState;
+            },
         }
     )
 );

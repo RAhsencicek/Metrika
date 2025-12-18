@@ -65,7 +65,7 @@ const CreateTaskFromDocModal: React.FC<CreateTaskFromDocModalProps> = ({
                 description: formData.description || `Bu görev "${analysis?.document.name}" doküman analizinden oluşturulmuştur.`,
                 status: 'Todo',
                 priority: formData.priority,
-                projectId: formData.projectId,
+                projectIds: formData.projectId ? [formData.projectId] : [], // Array olarak güncellendi
                 assigneeId: formData.assigneeId,
                 dueDate: formData.dueDate,
                 tags: formData.tags,
@@ -108,7 +108,7 @@ const CreateTaskFromDocModal: React.FC<CreateTaskFromDocModalProps> = ({
                     description: `Bu görev "${analysis?.document.name}" doküman analizinden otomatik olarak oluşturulmuştur.`,
                     status: 'Todo',
                     priority: action.priority === 'high' ? 'High' : action.priority === 'medium' ? 'Medium' : 'Low',
-                    projectId: formData.projectId,
+                    projectIds: formData.projectId ? [formData.projectId] : [], // Array olarak güncellendi
                     assigneeId: formData.assigneeId,
                     dueDate: formData.dueDate,
                     tags: ['Doküman Analizi', 'Otomatik'],

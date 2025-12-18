@@ -48,7 +48,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, selected
             description: formData.description.trim(),
             status: 'Todo',
             priority: formData.priority,
-            projectId: formData.projectId,
+            projectIds: formData.projectId ? [formData.projectId] : [], // Array olarak güncellendi
             assigneeId: formData.assigneeId,
             dueDate: formData.dueDate,
             estimatedHours: formData.estimatedHours,

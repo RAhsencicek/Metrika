@@ -98,7 +98,7 @@ const KPIPage: React.FC = () => {
     }, [filteredProjects]);
 
     const teamPerformance = useMemo(() => {
-        const projectTasks = selectedProject === 'all' ? tasks : tasks.filter(t => t.projectId === selectedProject);
+        const projectTasks = selectedProject === 'all' ? tasks : tasks.filter(t => t.projectIds.includes(selectedProject));
         const relevantUserIds = selectedProject === 'all' ? users.map(u => u.id) : [...new Set(projectTasks.map(t => t.assigneeId))];
         return users.filter(u => relevantUserIds.includes(u.id)).map(user => {
             const userTasks = projectTasks.filter(t => t.assigneeId === user.id);

@@ -82,8 +82,9 @@ export interface Task {
   description: string;
   status: TaskStatus;
   priority: TaskPriority;
-  projectId: string;
+  projectIds: string[]; // Görevin bağlı olduğu proje ID'leri (birden fazla projeye bağlanabilir)
   assigneeId: string;
+  documentIds?: string[]; // Görevin bağlı olduğu doküman ID'leri
   dueDate: string;
   tags: string[];
   estimatedHours: number;

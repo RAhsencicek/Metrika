@@ -13,7 +13,7 @@ interface ProjectEditModalProps {
     status: 'Active' | 'Completed' | 'On Hold' | 'At Risk';
     methodology: 'Waterfall' | 'Scrum' | 'Hybrid';
     startDate: string;
-    endDate: string;
+    dueDate: string; // endDate yerine dueDate
     budget: number;
   };
 }
@@ -23,7 +23,7 @@ interface ProjectEditData {
   description: string;
   status: 'Active' | 'Completed' | 'On Hold' | 'At Risk';
   startDate: string;
-  endDate: string;
+  dueDate: string; // endDate yerine dueDate
   budget: string;
 }
 
@@ -39,7 +39,7 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     description: project.description,
     status: project.status,
     startDate: project.startDate,
-    endDate: project.endDate,
+    dueDate: project.dueDate,
     budget: project.budget.toString()
   });
 
@@ -121,8 +121,8 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                   key={status.value}
                   onClick={() => setFormData({ ...formData, status: status.value as ProjectEditData['status'] })}
                   className={`px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${formData.status === status.value
-                      ? `bg-${status.color}-500/20 border-${status.color}-500/50 text-${status.color}-400`
-                      : 'bg-dark-900 border-dark-600 text-gray-400 hover:border-dark-500'
+                    ? `bg-${status.color}-500/20 border-${status.color}-500/50 text-${status.color}-400`
+                    : 'bg-dark-900 border-dark-600 text-gray-400 hover:border-dark-500'
                     }`}
                 >
                   {status.label}
@@ -152,8 +152,8 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
               </label>
               <input
                 type="date"
-                value={formData.endDate}
-                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                value={formData.dueDate}
+                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                 className="w-full bg-dark-900 border border-dark-600 rounded-lg px-4 py-3 text-white focus:border-primary focus:outline-none"
               />
             </div>

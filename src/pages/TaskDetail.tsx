@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
     ArrowLeft, Calendar, Clock, Tag,
-    Paperclip, BarChart, Zap, Check, ThumbsUp,
-    AlertCircle
+    FileText, BarChart, Zap, Check, ThumbsUp,
+    AlertCircle, FolderOpen
 } from 'lucide-react';
 import { useTaskStore, useProjectStore, useUserStore } from '../store';
 import { taskStatusClasses, priorityClasses, colorClasses } from '../utils/colorUtils';
+import { useToastStore } from '../components/ToastContainer';
+import LinkedDocumentsModal from '../components/LinkedDocumentsModal';
+import LinkedProjectsCard from '../components/LinkedProjectsCard';
 
 const TaskDetail: React.FC = () => {
     const navigate = useNavigate();
@@ -16,10 +19,32 @@ const TaskDetail: React.FC = () => {
     const { getTaskById, updateTaskStatus } = useTaskStore();
     const { getProjectById } = useProjectStore();
     const { getUserById, currentUser } = useUserStore();
+    const { addToast } = useToastStore();
+
+    // Modal state
+    const [isDocModalOpen, setIsDocModalOpen] = useState(false);
 
     const task = getTaskById(id || '');
-    const project = task ? getProjectById(task.projectId) : null;
+    // Birden fazla projeye bağlı olabilir
+    const linkedProjects = task ? task.projectIds.map(pid => getProjectById(pid)).filter(Boolean) : [];
     const assignee = task ? getUserById(task.assigneeId) : null;
+
+    // Göreve bağlı doküman kontrolü
+    const hasLinkedDocuments = task?.documentIds && task.documentIds.length > 0;
+
+    // Doküman modalnı aç/kapat
+    const handleViewDocument = () => {
+        if (hasLinkedDocuments) {
+            setIsDocModalOpen(true);
+        } else {
+            addToast({
+                type: 'warning',
+                title: 'Doküman Bulunamadı',
+                message: 'Bu göreve bağlı bir doküman bulunmuyor.',
+                duration: 4000,
+            });
+        }
+    };
 
     // Status label helper
     const getStatusLabel = (status: string) => {
@@ -90,252 +115,283 @@ const TaskDetail: React.FC = () => {
 
     const statusConfig = taskStatusClasses[task.status];
     const priorityConfig = priorityClasses[task.priority];
-    const projectColor = project ? colorClasses[project.color] : null;
 
     return (
-        <div className="pb-20 animate-fade-in">
-            <button onClick={() => navigate(-1)} className="flex items-center text-gray-400 hover:text-white mb-6">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Geri Dön
-            </button>
+        <>
+            <div className="pb-20 animate-fade-in">
+                <button onClick={() => navigate(-1)} className="flex items-center text-gray-400 hover:text-white mb-6">
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Geri Dön
+                </button>
 
-            <div className="flex flex-col lg:flex-row gap-8">
-                {/* Left Column: Task Info */}
-                <div className="w-full lg:w-3/4 space-y-6">
-                    <div className="bg-dark-800 rounded-xl p-6 border border-dark-700">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-2">
-                                <span className={`text-xs px-2 py-1 rounded border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}>
-                                    {getStatusLabel(task.status)}
-                                </span>
-                                <span className={`text-xs px-2 py-1 rounded ${priorityConfig.bg} ${priorityConfig.text}`}>
-                                    {getPriorityLabel(task.priority)}
-                                </span>
-                            </div>
-                            <div className="flex space-x-2">
-                                <button className="p-2 hover:bg-dark-700 rounded-lg text-gray-400">
-                                    <Paperclip className="w-4 h-4" />
-                                </button>
-                                {task.status !== 'Done' && (
+                <div className="flex flex-col lg:flex-row gap-8">
+                    {/* Left Column: Task Info */}
+                    <div className="w-full lg:w-3/4 space-y-6">
+                        <div className="bg-dark-800 rounded-xl p-6 border border-dark-700">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-xs px-2 py-1 rounded border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}>
+                                        {getStatusLabel(task.status)}
+                                    </span>
+                                    <span className={`text-xs px-2 py-1 rounded ${priorityConfig.bg} ${priorityConfig.text}`}>
+                                        {getPriorityLabel(task.priority)}
+                                    </span>
+                                </div>
+                                <div className="flex space-x-2">
                                     <button
-                                        onClick={handleCompleteTask}
-                                        className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center"
+                                        onClick={handleViewDocument}
+                                        className={`p-2 rounded-lg flex items-center gap-1.5 transition-colors ${hasLinkedDocuments
+                                            ? 'hover:bg-blue-500/20 text-blue-400 hover:text-blue-300'
+                                            : 'hover:bg-dark-700 text-gray-400'
+                                            }`}
+                                        title={hasLinkedDocuments ? `Bağlı Dokümanlar (${task?.documentIds?.length})` : 'Doküman Bağlantısı Yok'}
                                     >
-                                        <Check className="w-4 h-4 mr-2" />
-                                        Görevi Tamamla
+                                        <FileText className="w-4 h-4" />
+                                        {hasLinkedDocuments && (
+                                            <span className="text-xs">Dokümanlar ({task?.documentIds?.length})</span>
+                                        )}
                                     </button>
-                                )}
-                            </div>
-                        </div>
-
-                        <h1 className="text-2xl font-bold text-white mb-4">{task.title}</h1>
-
-                        <div className="flex flex-wrap gap-6 mb-6 pb-6 border-b border-dark-700">
-                            {/* Assignee */}
-                            <div className="flex items-center">
-                                <img
-                                    src={`https://picsum.photos/id/${assignee?.avatar || 64}/32/32`}
-                                    className="w-8 h-8 rounded-full mr-3"
-                                    alt="Assignee"
-                                />
-                                <div>
-                                    <p className="text-xs text-gray-400">Atanan Kişi</p>
-                                    <p className="text-sm text-white font-medium">{assignee?.name || 'Atanmamış'}</p>
+                                    {task.status !== 'Done' && (
+                                        <button
+                                            onClick={handleCompleteTask}
+                                            className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center"
+                                        >
+                                            <Check className="w-4 h-4 mr-2" />
+                                            Görevi Tamamla
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Due Date */}
-                            <div className="flex items-center">
-                                <div className="bg-dark-700 p-2 rounded-full mr-3">
-                                    <Calendar className="w-4 h-4 text-gray-300" />
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-400">Son Tarih</p>
-                                    <p className="text-sm text-white font-medium">{formatDate(task.dueDate)}</p>
-                                </div>
-                            </div>
+                            <h1 className="text-2xl font-bold text-white mb-4">{task.title}</h1>
 
-                            {/* Estimated Time */}
-                            <div className="flex items-center">
-                                <div className="bg-dark-700 p-2 rounded-full mr-3">
-                                    <Clock className="w-4 h-4 text-gray-300" />
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-400">Tahmini Süre</p>
-                                    <p className="text-sm text-white font-medium">{task.estimatedHours} Saat</p>
-                                </div>
-                            </div>
-
-                            {/* Project */}
-                            {project && (
+                            <div className="flex flex-wrap gap-6 mb-6 pb-6 border-b border-dark-700">
+                                {/* Assignee */}
                                 <div className="flex items-center">
-                                    <div className={`w-3 h-3 rounded-full ${projectColor?.dot || 'bg-gray-500'} mr-2`}></div>
+                                    <img
+                                        src={`https://picsum.photos/id/${assignee?.avatar || 64}/32/32`}
+                                        className="w-8 h-8 rounded-full mr-3"
+                                        alt="Assignee"
+                                    />
                                     <div>
-                                        <p className="text-xs text-gray-400">Proje</p>
-                                        <p className="text-sm text-white font-medium">{project.title}</p>
+                                        <p className="text-xs text-gray-400">Atanan Kişi</p>
+                                        <p className="text-sm text-white font-medium">{assignee?.name || 'Atanmamış'}</p>
                                     </div>
                                 </div>
-                            )}
-                        </div>
 
-                        {/* Description */}
-                        <div className="mb-6">
-                            <h3 className="text-lg font-semibold text-white mb-2">Açıklama</h3>
-                            <div className="text-gray-300 text-sm leading-relaxed">
-                                <p>{task.description}</p>
+                                {/* Due Date */}
+                                <div className="flex items-center">
+                                    <div className="bg-dark-700 p-2 rounded-full mr-3">
+                                        <Calendar className="w-4 h-4 text-gray-300" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-400">Son Tarih</p>
+                                        <p className="text-sm text-white font-medium">{formatDate(task.dueDate)}</p>
+                                    </div>
+                                </div>
+
+                                {/* Estimated Time */}
+                                <div className="flex items-center">
+                                    <div className="bg-dark-700 p-2 rounded-full mr-3">
+                                        <Clock className="w-4 h-4 text-gray-300" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-400">Tahmini Süre</p>
+                                        <p className="text-sm text-white font-medium">{task.estimatedHours} Saat</p>
+                                    </div>
+                                </div>
+
+                                {/* Projects - Birden fazla proje gösterimi */}
+                                <div className="flex items-center">
+                                    <div className="bg-dark-700 p-2 rounded-full mr-3">
+                                        <FolderOpen className="w-4 h-4 text-gray-300" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-400">Projeler</p>
+                                        {linkedProjects.length > 0 ? (
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                {linkedProjects.slice(0, 2).map((p, idx) => (
+                                                    <span key={p!.id} className="text-sm text-white font-medium flex items-center">
+                                                        <div className={`w-2 h-2 rounded-full ${colorClasses[p!.color]?.dot || 'bg-gray-500'} mr-1`} />
+                                                        {p!.title}
+                                                        {idx < Math.min(linkedProjects.length, 2) - 1 && <span className="text-gray-500 mx-1">,</span>}
+                                                    </span>
+                                                ))}
+                                                {linkedProjects.length > 2 && (
+                                                    <span className="text-xs text-gray-400">+{linkedProjects.length - 2} daha</span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-gray-500 italic">Projeye ait değil</p>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Tags */}
-                        {task.tags.length > 0 && (
+                            {/* Description */}
                             <div className="mb-6">
-                                <h3 className="text-sm font-semibold text-gray-400 mb-2">Etiketler</h3>
-                                <div className="flex gap-2 flex-wrap">
-                                    {task.tags.map(tag => (
-                                        <span key={tag} className="flex items-center px-3 py-1 bg-dark-700 rounded-full text-xs text-gray-300">
-                                            <Tag className="w-3 h-3 mr-1" /> {tag}
-                                        </span>
-                                    ))}
+                                <h3 className="text-lg font-semibold text-white mb-2">Açıklama</h3>
+                                <div className="text-gray-300 text-sm leading-relaxed">
+                                    <p>{task.description}</p>
                                 </div>
                             </div>
-                        )}
 
-                        {/* Progress Bar */}
-                        <div className="bg-dark-900 rounded-lg p-4">
-                            <div className="flex justify-between text-sm mb-2">
-                                <span className="text-gray-400">Görev İlerlemesi</span>
-                                <span className="text-white">{Math.min(progress, 100)}%</span>
-                            </div>
-                            <div className="w-full bg-dark-700 rounded-full h-2">
-                                <div
-                                    className="bg-blue-500 h-2 rounded-full transition-all"
-                                    style={{ width: `${Math.min(progress, 100)}%` }}
-                                ></div>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-2 text-right">
-                                {task.loggedHours}/{task.estimatedHours} saat tamamlandı
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Timeline & Comments */}
-                    <div className="bg-dark-800 rounded-xl p-6 border border-dark-700">
-                        <h3 className="font-bold text-white mb-6">Aktivite Geçmişi</h3>
-
-                        <div className="relative space-y-8 pl-8 before:absolute before:left-3 before:top-2 before:bottom-0 before:w-0.5 before:bg-dark-700">
-                            <div className="relative">
-                                <div className="absolute -left-8 top-0 w-6 h-6 bg-dark-800 border-2 border-primary rounded-full flex items-center justify-center">
-                                    <div className="w-2 h-2 bg-primary rounded-full"></div>
-                                </div>
-                                <p className="text-sm text-gray-300">Görev oluşturuldu.</p>
-                                <p className="text-xs text-gray-500 mt-1">{formatDate(task.createdAt)}</p>
-                            </div>
-
-                            {task.loggedHours > 0 && (
-                                <div className="relative">
-                                    <div className="absolute -left-8 top-0 w-6 h-6 bg-dark-800 border-2 border-blue-400 rounded-full flex items-center justify-center">
-                                        <Clock className="w-3 h-3 text-blue-400" />
+                            {/* Tags */}
+                            {task.tags.length > 0 && (
+                                <div className="mb-6">
+                                    <h3 className="text-sm font-semibold text-gray-400 mb-2">Etiketler</h3>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {task.tags.map(tag => (
+                                            <span key={tag} className="flex items-center px-3 py-1 bg-dark-700 rounded-full text-xs text-gray-300">
+                                                <Tag className="w-3 h-3 mr-1" /> {tag}
+                                            </span>
+                                        ))}
                                     </div>
-                                    <p className="text-sm text-gray-300">
-                                        <span className="font-semibold text-white">{task.loggedHours} saat</span> çalışma kaydedildi.
-                                    </p>
-                                    <p className="text-xs text-gray-500 mt-1">Son güncelleme: {formatDate(task.updatedAt)}</p>
                                 </div>
                             )}
 
-                            {task.status === 'Done' && (
-                                <div className="relative">
-                                    <div className="absolute -left-8 top-0 w-6 h-6 bg-dark-800 border-2 border-green-500 rounded-full flex items-center justify-center">
-                                        <ThumbsUp className="w-3 h-3 text-green-500" />
-                                    </div>
-                                    <p className="text-sm text-gray-300">Görev tamamlandı.</p>
-                                    <p className="text-xs text-gray-500 mt-1">{formatDate(task.updatedAt)}</p>
+                            {/* Progress Bar */}
+                            <div className="bg-dark-900 rounded-lg p-4">
+                                <div className="flex justify-between text-sm mb-2">
+                                    <span className="text-gray-400">Görev İlerlemesi</span>
+                                    <span className="text-white">{Math.min(progress, 100)}%</span>
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Comment Input */}
-                        <div className="mt-8 flex gap-4">
-                            <img
-                                src={`https://picsum.photos/id/${currentUser?.avatar || 64}/40/40`}
-                                className="w-10 h-10 rounded-full"
-                                alt="Me"
-                            />
-                            <div className="flex-1">
-                                <textarea
-                                    className="w-full bg-dark-900 border border-dark-700 rounded-lg p-3 text-sm text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
-                                    rows={3}
-                                    placeholder="Yorum yaz..."
-                                ></textarea>
-                                <div className="flex justify-end mt-2">
-                                    <button className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded text-sm">Gönder</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Column: Sidebar */}
-                <div className="w-full lg:w-1/4 space-y-6">
-                    {/* AI Suggestions */}
-                    <div className="bg-gradient-to-br from-indigo-900 to-dark-800 rounded-xl p-5 border border-indigo-500/30">
-                        <div className="flex items-center space-x-2 mb-3">
-                            <Zap className="w-4 h-4 text-yellow-400" />
-                            <h3 className="font-bold text-white text-sm">YZ Önerileri</h3>
-                        </div>
-                        <ul className="space-y-3">
-                            <li className="text-xs text-gray-300 bg-black/20 p-2 rounded border-l-2 border-yellow-400">
-                                Bu görev için kalan süre {task.estimatedHours - task.loggedHours} saat olarak hesaplandı.
-                            </li>
-                            <li className="text-xs text-gray-300 bg-black/20 p-2 rounded border-l-2 border-blue-400">
-                                {project ? `"${project.title}" projesindeki diğer görevlerle bağlantı kurabilirsiniz.` : 'Görevi bir projeye bağlamanız önerilir.'}
-                            </li>
-                        </ul>
-                    </div>
-
-                    {/* Task Stats */}
-                    <div className="bg-dark-800 rounded-xl p-5 border border-dark-700">
-                        <div className="flex items-center space-x-2 mb-4">
-                            <BarChart className="w-4 h-4 text-purple-400" />
-                            <h3 className="font-bold text-white text-sm">Görev İstatistikleri</h3>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <div className="flex justify-between text-xs mb-1">
-                                    <span className="text-gray-400">Zaman Kullanımı</span>
-                                    <span className="text-blue-400">{task.loggedHours}/{task.estimatedHours} saat</span>
-                                </div>
-                                <div className="w-full bg-dark-700 h-1.5 rounded-full">
+                                <div className="w-full bg-dark-700 rounded-full h-2">
                                     <div
-                                        className="bg-blue-500 h-1.5 rounded-full"
+                                        className="bg-blue-500 h-2 rounded-full transition-all"
                                         style={{ width: `${Math.min(progress, 100)}%` }}
                                     ></div>
                                 </div>
+                                <p className="text-xs text-gray-500 mt-2 text-right">
+                                    {task.loggedHours}/{task.estimatedHours} saat tamamlandı
+                                </p>
                             </div>
-                            <div className="flex justify-between text-xs">
-                                <span className="text-gray-400">Oluşturulma</span>
-                                <span className="text-white">{formatDate(task.createdAt)}</span>
+                        </div>
+
+                        {/* Timeline & Comments */}
+                        <div className="bg-dark-800 rounded-xl p-6 border border-dark-700">
+                            <h3 className="font-bold text-white mb-6">Aktivite Geçmişi</h3>
+
+                            <div className="relative space-y-8 pl-8 before:absolute before:left-3 before:top-2 before:bottom-0 before:w-0.5 before:bg-dark-700">
+                                <div className="relative">
+                                    <div className="absolute -left-8 top-0 w-6 h-6 bg-dark-800 border-2 border-primary rounded-full flex items-center justify-center">
+                                        <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                    </div>
+                                    <p className="text-sm text-gray-300">Görev oluşturuldu.</p>
+                                    <p className="text-xs text-gray-500 mt-1">{formatDate(task.createdAt)}</p>
+                                </div>
+
+                                {task.loggedHours > 0 && (
+                                    <div className="relative">
+                                        <div className="absolute -left-8 top-0 w-6 h-6 bg-dark-800 border-2 border-blue-400 rounded-full flex items-center justify-center">
+                                            <Clock className="w-3 h-3 text-blue-400" />
+                                        </div>
+                                        <p className="text-sm text-gray-300">
+                                            <span className="font-semibold text-white">{task.loggedHours} saat</span> çalışma kaydedildi.
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">Son güncelleme: {formatDate(task.updatedAt)}</p>
+                                    </div>
+                                )}
+
+                                {task.status === 'Done' && (
+                                    <div className="relative">
+                                        <div className="absolute -left-8 top-0 w-6 h-6 bg-dark-800 border-2 border-green-500 rounded-full flex items-center justify-center">
+                                            <ThumbsUp className="w-3 h-3 text-green-500" />
+                                        </div>
+                                        <p className="text-sm text-gray-300">Görev tamamlandı.</p>
+                                        <p className="text-xs text-gray-500 mt-1">{formatDate(task.updatedAt)}</p>
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex justify-between text-xs">
-                                <span className="text-gray-400">Son Güncelleme</span>
-                                <span className="text-white">{formatDate(task.updatedAt)}</span>
+
+                            {/* Comment Input */}
+                            <div className="mt-8 flex gap-4">
+                                <img
+                                    src={`https://picsum.photos/id/${currentUser?.avatar || 64}/40/40`}
+                                    className="w-10 h-10 rounded-full"
+                                    alt="Me"
+                                />
+                                <div className="flex-1">
+                                    <textarea
+                                        className="w-full bg-dark-900 border border-dark-700 rounded-lg p-3 text-sm text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
+                                        rows={3}
+                                        placeholder="Yorum yaz..."
+                                    ></textarea>
+                                    <div className="flex justify-end mt-2">
+                                        <button className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded text-sm">Gönder</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Documents Placeholder */}
-                    <div className="bg-dark-800 rounded-xl p-5 border border-dark-700">
-                        <h3 className="font-bold text-white text-sm mb-4">İlgili Dokümanlar</h3>
-                        <div className="text-center py-4 text-gray-500 text-sm">
-                            Henüz doküman eklenmedi
+                    {/* Right Column: Sidebar */}
+                    <div className="w-full lg:w-1/4 space-y-6">
+                        {/* AI Suggestions */}
+                        <div className="bg-gradient-to-br from-indigo-900 to-dark-800 rounded-xl p-5 border border-indigo-500/30">
+                            <div className="flex items-center space-x-2 mb-3">
+                                <Zap className="w-4 h-4 text-yellow-400" />
+                                <h3 className="font-bold text-white text-sm">YZ Önerileri</h3>
+                            </div>
+                            <ul className="space-y-3">
+                                <li className="text-xs text-gray-300 bg-black/20 p-2 rounded border-l-2 border-yellow-400">
+                                    Bu görev için kalan süre {task.estimatedHours - task.loggedHours} saat olarak hesaplandı.
+                                </li>
+                                <li className="text-xs text-gray-300 bg-black/20 p-2 rounded border-l-2 border-blue-400">
+                                    {linkedProjects.length > 0
+                                        ? `${linkedProjects.length} projeye bağlı. Diğer görevlerle bağlantı kurabilirsiniz.`
+                                        : 'Görevi bir projeye bağlamanız önerilir.'}
+                                </li>
+                            </ul>
                         </div>
-                        <button className="w-full mt-2 text-xs text-gray-400 hover:text-white border border-dashed border-dark-600 rounded p-2 hover:bg-dark-700 transition">
-                            + Doküman Ekle
-                        </button>
+
+                        {/* Task Stats */}
+                        <div className="bg-dark-800 rounded-xl p-5 border border-dark-700">
+                            <div className="flex items-center space-x-2 mb-4">
+                                <BarChart className="w-4 h-4 text-purple-400" />
+                                <h3 className="font-bold text-white text-sm">Görev İstatistikleri</h3>
+                            </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="text-gray-400">Zaman Kullanımı</span>
+                                        <span className="text-blue-400">{task.loggedHours}/{task.estimatedHours} saat</span>
+                                    </div>
+                                    <div className="w-full bg-dark-700 h-1.5 rounded-full">
+                                        <div
+                                            className="bg-blue-500 h-1.5 rounded-full"
+                                            style={{ width: `${Math.min(progress, 100)}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-gray-400">Oluşturulma</span>
+                                    <span className="text-white">{formatDate(task.createdAt)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-gray-400">Son Güncelleme</span>
+                                    <span className="text-white">{formatDate(task.updatedAt)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Bağlı Projeler Kartı */}
+                        <LinkedProjectsCard
+                            taskId={task.id}
+                            projectIds={task.projectIds}
+                        />
                     </div>
                 </div>
             </div>
-        </div>
+
+            {/* Linked Documents Modal */}
+            <LinkedDocumentsModal
+                isOpen={isDocModalOpen}
+                onClose={() => setIsDocModalOpen(false)}
+                documentIds={task?.documentIds || []}
+                taskTitle={task?.title}
+            />
+        </>
     );
 };
 

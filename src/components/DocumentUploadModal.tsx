@@ -16,7 +16,9 @@ import {
     FolderOpen
 } from 'lucide-react';
 import { useDocumentStore, useNotificationStore, useUserStore, useProjectStore } from '../store';
+import { uploadDocument } from '../services/documentApi';
 import type { DocumentType } from '../store/documentStore';
+import { ProjectDropdown } from './CustomDropdown';
 
 interface DocumentUploadModalProps {
     isOpen: boolean;
@@ -99,20 +101,29 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
         return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     }, []);
 
-    // Process a single file
+    // Process a single file with REAL backend upload
     const processFile = useCallback(async (uploadingFile: UploadingFile) => {
         try {
-            // Simulate upload progress
-            for (let progress = 0; progress <= 100; progress += 10) {
-                await new Promise(resolve => setTimeout(resolve, 80));
-                setUploadingFiles(prev =>
-                    prev.map(f =>
-                        f.id === uploadingFile.id
-                            ? { ...f, progress }
-                            : f
-                    )
-                );
-            }
+            // Upload file to backend with real progress tracking
+            const uploadedDocument = await uploadDocument(
+                {
+                    file: uploadingFile.file,
+                    fileName: uploadingFile.file.name,
+                    fileType: getDocumentType(uploadingFile.file.name),
+                    uploaderId: currentUser?.id || '1',
+                    projectId: selectedProjectId,
+                },
+                // Progress callback
+                (progress) => {
+                    setUploadingFiles(prev =>
+                        prev.map(f =>
+                            f.id === uploadingFile.id
+                                ? { ...f, progress }
+                                : f
+                        )
+                    );
+                }
+            );
 
             // Update status to processing
             setUploadingFiles(prev =>
@@ -123,20 +134,14 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                 )
             );
 
-            // Create document in store
-            const fileReader = new FileReader();
-            const dataUrl = await new Promise<string>((resolve, reject) => {
-                fileReader.onload = () => resolve(fileReader.result as string);
-                fileReader.onerror = reject;
-                fileReader.readAsDataURL(uploadingFile.file);
-            });
-
+            // Add document to store with backend response
             const newDocument = addDocument({
-                name: uploadingFile.file.name,
-                type: getDocumentType(uploadingFile.file.name),
-                size: uploadingFile.file.size,
-                sizeFormatted: formatFileSize(uploadingFile.file.size),
-                url: dataUrl,
+                id: uploadedDocument.id, // Use ID from backend
+                name: uploadedDocument.name,
+                type: uploadedDocument.type,
+                size: uploadedDocument.size,
+                sizeFormatted: formatFileSize(uploadedDocument.size),
+                url: uploadedDocument.url, // URL from backend (e.g., S3 URL)
                 uploaderId: currentUser?.id || '1',
                 projectId: selectedProjectId || undefined,
                 tags: [],
@@ -189,10 +194,12 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
 
         } catch (error) {
             console.error('File upload error:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Yükleme başarısız oldu';
+
             setUploadingFiles(prev =>
                 prev.map(f =>
                     f.id === uploadingFile.id
-                        ? { ...f, status: 'error', error: 'Yükleme başarısız oldu' }
+                        ? { ...f, status: 'error', error: errorMessage }
                         : f
                 )
             );
@@ -200,7 +207,7 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
             addNotification({
                 type: 'error',
                 title: 'Yükleme Hatası',
-                message: `"${uploadingFile.file.name}" yüklenirken bir hata oluştu.`,
+                message: `"${uploadingFile.file.name}" yüklenirken bir hata oluştu: ${errorMessage}`,
             });
         }
     }, [addDocument, addNotification, autoAnalyze, currentUser?.id, formatFileSize, getDocumentType, onUploadComplete, selectedProjectId, setCurrentAnalysis, triggerAnalysis]);
@@ -372,18 +379,12 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                                 <FolderOpen className="w-4 h-4 mr-2 text-gray-400" />
                                 Proje (Opsiyonel)
                             </label>
-                            <select
+                            <ProjectDropdown
+                                projects={projects}
                                 value={selectedProjectId}
-                                onChange={(e) => setSelectedProjectId(e.target.value)}
-                                className="w-full bg-dark-900/80 border border-dark-600 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                            >
-                                <option value="">Proje Seçmeyin</option>
-                                {projects.map((project) => (
-                                    <option key={project.id} value={project.id}>
-                                        {project.title}
-                                    </option>
-                                ))}
-                            </select>
+                                onChange={setSelectedProjectId}
+                                showOptional={true}
+                            />
                         </div>
 
                         {/* Auto Analyze Toggle */}
@@ -396,8 +397,8 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                                     className="sr-only"
                                 />
                                 <div className={`relative w-14 h-7 rounded-full transition-all duration-300 ${autoAnalyze
-                                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30'
-                                        : 'bg-dark-600'
+                                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30'
+                                    : 'bg-dark-600'
                                     }`}>
                                     <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300 ${autoAnalyze ? 'translate-x-8' : 'translate-x-1'
                                         }`} />
@@ -416,7 +417,6 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                         onDrop={handleDrop}
                         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                         onDragLeave={() => setIsDragging(false)}
-                        onClick={() => fileInputRef.current?.click()}
                         className={`
                             relative border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-300 overflow-hidden
                             ${isDragging
@@ -425,59 +425,64 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                             }
                         `}
                     >
-                        {/* Background pattern */}
-                        <div className="absolute inset-0 opacity-5">
-                            <div className="absolute inset-0" style={{
-                                backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)',
-                                backgroundSize: '24px 24px'
-                            }} />
-                        </div>
-
+                        {/* Clickable file input - covers entire drop zone */}
                         <input
                             ref={fileInputRef}
                             type="file"
                             multiple
                             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
                             onChange={handleFileSelect}
-                            className="hidden"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            style={{ zIndex: 20 }}
                         />
 
-                        <div className={`relative w-20 h-20 mx-auto mb-5 rounded-2xl flex items-center justify-center transition-all duration-300 ${isDragging
+                        {/* Background pattern - non-interactive */}
+                        <div className="absolute inset-0 opacity-5 pointer-events-none">
+                            <div className="absolute inset-0" style={{
+                                backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)',
+                                backgroundSize: '24px 24px'
+                            }} />
+                        </div>
+
+                        {/* Content - all non-interactive */}
+                        <div className="pointer-events-none relative z-10">
+                            <div className={`w-20 h-20 mx-auto mb-5 rounded-2xl flex items-center justify-center transition-all duration-300 ${isDragging
                                 ? 'bg-gradient-to-br from-primary/30 to-purple-500/30 scale-110'
                                 : 'bg-dark-700'
-                            }`}>
-                            <Upload className={`w-10 h-10 transition-all duration-300 ${isDragging ? 'text-primary scale-110' : 'text-gray-400'
-                                }`} />
-                            {isDragging && (
-                                <div className="absolute inset-0 rounded-2xl animate-ping bg-primary/20" />
-                            )}
+                                }`}>
+                                <Upload className={`w-10 h-10 transition-all duration-300 ${isDragging ? 'text-primary scale-110' : 'text-gray-400'
+                                    }`} />
+                                {isDragging && (
+                                    <div className="absolute inset-0 rounded-2xl animate-ping bg-primary/20" />
+                                )}
+                            </div>
+
+                            <p className="text-lg font-semibold text-white mb-2">
+                                {isDragging ? '✨ Dosyayı Bırakın' : 'Dosyalarınızı Sürükleyin'}
+                            </p>
+                            <p className="text-gray-400">
+                                veya <span className="text-primary font-medium hover:underline">bilgisayarınızdan seçin</span>
+                            </p>
+
+                            {/* File type badges */}
+                            <div className="flex flex-wrap justify-center gap-2 mt-5">
+                                {['PDF', 'DOCX', 'XLSX', 'PPTX', 'TXT'].map((type) => (
+                                    <span
+                                        key={type}
+                                        className="px-3 py-1 bg-dark-700/80 text-gray-400 text-xs rounded-full border border-dark-600"
+                                    >
+                                        {type}
+                                    </span>
+                                ))}
+                            </div>
+
+                            <p className="text-xs text-gray-500 mt-4">
+                                Maksimum dosya boyutu: 25 MB
+                            </p>
                         </div>
-
-                        <p className="relative text-lg font-semibold text-white mb-2">
-                            {isDragging ? '✨ Dosyayı Bırakın' : 'Dosyalarınızı Sürükleyin'}
-                        </p>
-                        <p className="relative text-gray-400">
-                            veya <span className="text-primary font-medium hover:underline">bilgisayarınızdan seçin</span>
-                        </p>
-
-                        {/* File type badges */}
-                        <div className="relative flex flex-wrap justify-center gap-2 mt-5">
-                            {['PDF', 'DOCX', 'XLSX', 'PPTX', 'TXT'].map((type) => (
-                                <span
-                                    key={type}
-                                    className="px-3 py-1 bg-dark-700/80 text-gray-400 text-xs rounded-full border border-dark-600"
-                                >
-                                    {type}
-                                </span>
-                            ))}
-                        </div>
-
-                        <p className="relative text-xs text-gray-500 mt-4">
-                            Maksimum dosya boyutu: 25 MB
-                        </p>
                     </div>
 
-                    {/* File List */}
+                    {/* File List - Outside drop zone */}
                     {hasFiles && (
                         <div className="mt-6 space-y-3">
                             <div className="flex items-center justify-between">

@@ -9,6 +9,7 @@ import ProjectDetail from './pages/ProjectDetail';
 import TasksPage from './pages/TasksPage';
 import TaskDetail from './pages/TaskDetail';
 import DocumentAnalysis from './pages/DocumentAnalysis';
+import DocumentsPage from './pages/DocumentsPage';
 import GamificationProfile from './pages/GamificationProfile';
 import Leaderboard from './pages/Leaderboard';
 import Notifications from './pages/Notifications';
@@ -18,6 +19,7 @@ import TeamPage from './pages/TeamPage';
 import TeamMemberProfile from './pages/TeamMemberProfile';
 import KPIPage from './pages/KPIPage';
 import HelpPage from './pages/HelpPage';
+import ToastContainer from './components/ToastContainer';
 
 // Layout wrapper with Sidebar and Header
 const LayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -48,7 +50,9 @@ const App: React.FC = () => {
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/tasks/:id" element={<TaskDetail />} />
           {/* Documents */}
+          <Route path="/documents" element={<DocumentsPage />} />
           <Route path="/documents/analysis" element={<DocumentAnalysis />} />
+          <Route path="/documents/analysis/:id" element={<DocumentAnalysis />} />
           {/* Gamification */}
           <Route path="/gamification" element={<GamificationProfile />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
@@ -66,6 +70,8 @@ const App: React.FC = () => {
           <Route path="*" element={<Dashboard />} />
         </Routes>
       </LayoutContent>
+      {/* Global Toast Notifications */}
+      <ToastContainer />
     </Router>
   );
 };

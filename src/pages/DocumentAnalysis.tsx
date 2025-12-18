@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
     FileText,
+    File,
+    FileSpreadsheet,
+    Presentation,
     CheckCircle,
     AlertOctagon,
     List,
@@ -11,7 +14,6 @@ import {
     Save,
     Check,
     Loader2,
-    ExternalLink,
     Clock,
     Brain,
     Eye,
@@ -20,26 +22,36 @@ import {
     Upload,
     Sparkles,
     StickyNote,
-    Trash2,
-    GripVertical,
     User,
     Target,
 } from 'lucide-react';
-import { useDocumentStore, useNotificationStore } from '../store';
+import { useDocumentStore, useNotificationStore, useTaskStore } from '../store';
 import ShareAnalysisModal from '../components/ShareAnalysisModal';
 import CreateTaskFromDocModal from '../components/CreateTaskFromDocModal';
 import DocumentUploadModal from '../components/DocumentUploadModal';
+import { PriorityDropdown } from '../components/CustomDropdown';
+import ActionCard from '../components/ActionCard';
+import EmptyState from '../components/EmptyState';
+import UndoToast from '../components/UndoToast';
+import LinkedTasksCard from '../components/LinkedTasksCard';
 
 const DocumentAnalysis: React.FC = () => {
     const navigate = useNavigate();
+    const { id: urlAnalysisId } = useParams<{ id: string }>();
+
     const {
         currentAnalysis,
         analyses,
         saveAnalysis,
         downloadDocument,
         setCurrentAnalysis,
+        addCustomAction,
+        removeCustomAction,
+        markCustomActionAsTask,
+        getAnalysisById,
     } = useDocumentStore();
     const { addNotification } = useNotificationStore();
+    const { addTask } = useTaskStore();
 
     // Modal states
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -49,27 +61,68 @@ const DocumentAnalysis: React.FC = () => {
     const [selectedActionId, setSelectedActionId] = useState<string | undefined>();
     const [selectedActionText, setSelectedActionText] = useState<string | undefined>();
 
-    // Custom actions state (user's own actions)
-    const [customActions, setCustomActions] = useState<Array<{
+    const [newActionText, setNewActionText] = useState('');
+    const [newActionPriority, setNewActionPriority] = useState<'low' | 'medium' | 'high'>('medium');
+    const [isCustomActionProcessing, setIsCustomActionProcessing] = useState<string | null>(null);
+
+    // Animation states
+    const [newlyAddedActionId, setNewlyAddedActionId] = useState<string | null>(null);
+    const [taskCreatedActionId, setTaskCreatedActionId] = useState<string | null>(null);
+
+    // Undo state for deleted actions
+    const [deletedAction, setDeletedAction] = useState<{
         id: string;
         text: string;
         priority: 'low' | 'medium' | 'high';
-        addedAsTask: boolean;
-        taskId?: string;
-    }>>([]);
-    const [newActionText, setNewActionText] = useState('');
-    const [newActionPriority, setNewActionPriority] = useState<'low' | 'medium' | 'high'>('medium');
+        analysisId: string;
+    } | null>(null);
+    const [showUndoToast, setShowUndoToast] = useState(false);
+
+    // Get customActions from the current analysis (from store, persisted)
+    const customActions = currentAnalysis?.customActions || [];
 
     // Loading states
     const [isSaving, setIsSaving] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
 
-    // Auto-select first analysis if none is selected (handles hydration from localStorage)
+    // Keep track of currentAnalysis ID to avoid infinite loops
+    const currentAnalysisIdRef = useRef<string | null>(currentAnalysis?.id ?? null);
+
+    // Sync currentAnalysis with analyses array on every page load/navigation
+    // This ensures customActions and other updates persist correctly
     useEffect(() => {
-        if (!currentAnalysis && analyses.length > 0) {
-            setCurrentAnalysis(analyses[0]);
+        if (analyses.length > 0) {
+            // URL'deki id parametresi varsa, o analizi yükle
+            if (urlAnalysisId) {
+                const analysisFromUrl = getAnalysisById(urlAnalysisId);
+                if (analysisFromUrl && currentAnalysisIdRef.current !== urlAnalysisId) {
+                    currentAnalysisIdRef.current = urlAnalysisId;
+                    setCurrentAnalysis(analysisFromUrl);
+                    return;
+                }
+            }
+
+            const currentId = currentAnalysis?.id;
+
+            if (currentId) {
+                // Find the matching analysis from the persisted array
+                const syncedAnalysis = analyses.find(a => a.id === currentId);
+                if (syncedAnalysis) {
+                    // Only update if the reference has changed (prevents infinite loop)
+                    if (currentAnalysisIdRef.current !== currentId ||
+                        syncedAnalysis !== currentAnalysis) {
+                        currentAnalysisIdRef.current = currentId;
+                        setCurrentAnalysis(syncedAnalysis);
+                    }
+                }
+            } else {
+                // No current analysis, select the first one
+                currentAnalysisIdRef.current = analyses[0].id;
+                setCurrentAnalysis(analyses[0]);
+            }
         }
-    }, [currentAnalysis, analyses, setCurrentAnalysis]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [analyses, urlAnalysisId]);
 
     // Get current analysis data
     const analysis = currentAnalysis;
@@ -144,39 +197,120 @@ const DocumentAnalysis: React.FC = () => {
         setIsTaskModalOpen(true);
     };
 
-    // Add custom action
+    // Add custom action (now using store)
     const handleAddCustomAction = () => {
-        if (!newActionText.trim()) return;
+        if (!newActionText.trim() || !analysis) return;
 
-        const newAction = {
-            id: `custom-${crypto.randomUUID()}`,
+        const newAction = addCustomAction(analysis.id, {
             text: newActionText.trim(),
             priority: newActionPriority,
-            addedAsTask: false,
-        };
+        });
 
-        setCustomActions(prev => [...prev, newAction]);
+        // Trigger animation for newly added action
+        setNewlyAddedActionId(newAction.id);
+        setTimeout(() => setNewlyAddedActionId(null), 600);
+
         setNewActionText('');
         setNewActionPriority('medium');
 
         addNotification({
             type: 'success',
             title: 'Aksiyon Eklendi',
-            message: 'Kendi aksiyonunuz listeye eklendi.',
+            message: 'Tasarlanan aksiyonunuz listeye eklendi.',
         });
     };
 
-    // Remove custom action
+    // Remove custom action with Undo support
     const handleRemoveCustomAction = (actionId: string) => {
-        setCustomActions(prev => prev.filter(a => a.id !== actionId));
+        if (!analysis) return;
+
+        // Find the action being deleted for potential undo
+        const actionToDelete = customActions.find(a => a.id === actionId);
+        if (actionToDelete) {
+            setDeletedAction({
+                id: actionToDelete.id,
+                text: actionToDelete.text,
+                priority: actionToDelete.priority,
+                analysisId: analysis.id,
+            });
+            setShowUndoToast(true);
+        }
+
+        removeCustomAction(analysis.id, actionId);
     };
 
-    // Create task from custom action
-    const handleCreateCustomTask = (actionId: string, actionText: string) => {
-        setSelectedActionId(actionId);
-        setSelectedActionText(actionText);
-        setCreateAllTasks(false);
-        setIsTaskModalOpen(true);
+    // Handle undo action
+    const handleUndoDelete = () => {
+        if (!deletedAction) return;
+
+        // Re-add the deleted action
+        addCustomAction(deletedAction.analysisId, {
+            text: deletedAction.text,
+            priority: deletedAction.priority,
+        });
+
+        setDeletedAction(null);
+        setShowUndoToast(false);
+
+        addNotification({
+            type: 'success',
+            title: 'Geri Alındı',
+            message: 'Silinen aksiyon geri getirildi.',
+        });
+    };
+
+    // Handle dismiss undo toast
+    const handleDismissUndo = () => {
+        setDeletedAction(null);
+        setShowUndoToast(false);
+    };
+
+    // Create task from custom action - actually creates the task!
+    const handleCreateCustomTask = async (actionId: string, actionText: string, actionPriority: 'low' | 'medium' | 'high') => {
+        if (!analysis) return;
+
+        setIsCustomActionProcessing(actionId);
+
+        try {
+            // Create the actual task in the task store
+            const newTask = addTask({
+                title: actionText,
+                description: `Bu görev "${analysis.document.name}" dokümanından kullanıcı tarafından oluşturulmuştur.`,
+                status: 'Todo',
+                priority: actionPriority === 'high' ? 'High' : actionPriority === 'medium' ? 'Medium' : 'Low',
+                projectIds: analysis.document.projectId ? [analysis.document.projectId] : [], // Array olarak güncellendi
+                assigneeId: '',
+                documentIds: [analysis.document.id], // Doküman bağlantısı
+                dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                tags: ['Doküman Analizi', 'Tasarlanan Aksiyon'],
+                estimatedHours: 4,
+                loggedHours: 0,
+            });
+
+            // Trigger success animation
+            setTaskCreatedActionId(actionId);
+
+            // Wait for animation then mark as task
+            setTimeout(() => {
+                markCustomActionAsTask(analysis.id, actionId, newTask.id);
+                setTaskCreatedActionId(null);
+            }, 700);
+
+            addNotification({
+                type: 'success',
+                title: 'Görev Oluşturuldu',
+                message: `"${actionText}" görevi başarıyla oluşturuldu.`,
+                actionUrl: `/tasks/${newTask.id}`,
+            });
+        } catch {
+            addNotification({
+                type: 'error',
+                title: 'Hata',
+                message: 'Görev oluşturulamadı.',
+            });
+        } finally {
+            setIsCustomActionProcessing(null);
+        }
     };
 
     // Handle view analysis from history
@@ -214,6 +348,25 @@ const DocumentAnalysis: React.FC = () => {
                 return 'bg-green-500/20 text-green-400';
             default:
                 return 'bg-gray-500/20 text-gray-400';
+        }
+    };
+
+    // Get document type icon with appropriate color
+    const getDocumentIcon = (type: string | undefined) => {
+        const iconClass = "w-16 h-16 mb-4 z-10";
+        switch (type) {
+            case 'PDF':
+                return <FileText className={`${iconClass} text-red-400`} />;
+            case 'DOCX':
+                return <File className={`${iconClass} text-blue-400`} />;
+            case 'XLSX':
+                return <FileSpreadsheet className={`${iconClass} text-green-400`} />;
+            case 'PPTX':
+                return <Presentation className={`${iconClass} text-orange-400`} />;
+            case 'TXT':
+                return <FileText className={`${iconClass} text-gray-400`} />;
+            default:
+                return <FileText className={`${iconClass} text-primary`} />;
         }
     };
 
@@ -326,9 +479,19 @@ const DocumentAnalysis: React.FC = () => {
                             pariatur excepteur sint occaecat cupidatat non proident sunt in
                             culpa qui officia deserunt mollit anim id est laborum...
                         </div>
-                        <FileText className="w-16 h-16 text-primary mb-4 z-10" />
+                        {getDocumentIcon(document?.type)}
                         <p className="text-gray-400 text-sm z-10 text-center px-4">{document?.name}</p>
-                        <p className="text-xs text-gray-600 z-10">{document?.sizeFormatted}</p>
+                        <div className="flex items-center gap-2 z-10 mt-1">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${document?.type === 'PDF' ? 'bg-red-500/20 text-red-400' :
+                                document?.type === 'DOCX' ? 'bg-blue-500/20 text-blue-400' :
+                                    document?.type === 'XLSX' ? 'bg-green-500/20 text-green-400' :
+                                        document?.type === 'PPTX' ? 'bg-orange-500/20 text-orange-400' :
+                                            'bg-gray-500/20 text-gray-400'
+                                }`}>
+                                {document?.type}
+                            </span>
+                            <span className="text-xs text-gray-600">{document?.sizeFormatted}</span>
+                        </div>
 
                         {/* Hover Overlay */}
                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 space-x-4">
@@ -381,6 +544,12 @@ const DocumentAnalysis: React.FC = () => {
                             </div>
                         )}
                     </div>
+
+                    {/* Linked Tasks Card */}
+                    <LinkedTasksCard
+                        documentId={document?.id || ''}
+                        documentName={document?.name || ''}
+                    />
                 </div>
 
                 {/* Middle: Analysis Results */}
@@ -507,87 +676,27 @@ const DocumentAnalysis: React.FC = () => {
 
                                 {/* Post-it Cards */}
                                 <div className="space-y-3 min-h-[200px]">
-                                    {analysis.suggestedActions.map((action, index) => {
-                                        const colors = [
-                                            'from-yellow-500/20 to-yellow-600/10 border-yellow-500/30',
-                                            'from-pink-500/20 to-pink-600/10 border-pink-500/30',
-                                            'from-blue-500/20 to-blue-600/10 border-blue-500/30',
-                                            'from-green-500/20 to-green-600/10 border-green-500/30',
-                                            'from-orange-500/20 to-orange-600/10 border-orange-500/30',
-                                        ];
-                                        const colorClass = colors[index % colors.length];
-
-                                        return (
-                                            <div
+                                    {analysis.suggestedActions.length === 0 ? (
+                                        <EmptyState
+                                            variant="no-actions"
+                                            className="py-6"
+                                        />
+                                    ) : (
+                                        analysis.suggestedActions.map((action, index) => (
+                                            <ActionCard
                                                 key={action.id}
-                                                className={`
-                                                    relative p-4 rounded-xl border-2 transition-all duration-300
-                                                    bg-gradient-to-br ${colorClass}
-                                                    ${action.addedAsTask
-                                                        ? 'opacity-60 scale-[0.98]'
-                                                        : 'hover:scale-[1.02] hover:shadow-lg cursor-pointer'
-                                                    }
-                                                    transform rotate-[${(index % 2 === 0 ? -1 : 1) * (Math.random() * 0.5)}deg]
-                                                `}
-                                                style={{
-                                                    transform: `rotate(${(index % 2 === 0 ? -1 : 1) * 0.5}deg)`
-                                                }}
-                                            >
-                                                {/* Grip handle */}
-                                                <div className="absolute top-2 left-2 opacity-30">
-                                                    <GripVertical className="w-3 h-3" />
-                                                </div>
-
-                                                {/* Priority indicator */}
-                                                <div className={`absolute top-2 right-2 w-2 h-2 rounded-full ${action.priority === 'high'
-                                                        ? 'bg-red-500 animate-pulse'
-                                                        : action.priority === 'medium'
-                                                            ? 'bg-yellow-500'
-                                                            : 'bg-green-500'
-                                                    }`} />
-
-                                                {/* Content */}
-                                                <div className="pl-4">
-                                                    <p className={`text-sm leading-relaxed ${action.addedAsTask
-                                                            ? 'text-gray-500 line-through'
-                                                            : 'text-gray-200'
-                                                        }`}>
-                                                        {action.text}
-                                                    </p>
-
-                                                    {/* Footer */}
-                                                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/10">
-                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${action.priority === 'high'
-                                                                ? 'bg-red-500/20 text-red-400'
-                                                                : action.priority === 'medium'
-                                                                    ? 'bg-yellow-500/20 text-yellow-400'
-                                                                    : 'bg-green-500/20 text-green-400'
-                                                            }`}>
-                                                            {action.priority === 'high' ? '🔥 Yüksek' : action.priority === 'medium' ? '⚡ Orta' : '✨ Düşük'}
-                                                        </span>
-
-                                                        {action.addedAsTask ? (
-                                                            <button
-                                                                onClick={() => navigate(`/tasks/${action.taskId}`)}
-                                                                className="text-green-400 hover:text-green-300 text-xs flex items-center font-medium"
-                                                            >
-                                                                <Check className="w-3 h-3 mr-1" />
-                                                                Görevi Gör
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => handleCreateTask(action.id, action.text)}
-                                                                className="text-primary hover:text-white text-xs flex items-center font-medium bg-primary/10 px-2 py-1 rounded-lg hover:bg-primary/20 transition"
-                                                            >
-                                                                <Plus className="w-3 h-3 mr-1" />
-                                                                Görev Yap
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                                id={action.id}
+                                                text={action.text}
+                                                priority={action.priority}
+                                                addedAsTask={action.addedAsTask}
+                                                taskId={action.taskId}
+                                                type="ai"
+                                                index={index}
+                                                onCreateTask={(id, text) => handleCreateTask(id, text)}
+                                                onViewTask={(taskId) => navigate(`/tasks/${taskId}`)}
+                                            />
+                                        ))
+                                    )}
                                 </div>
                             </div>
 
@@ -596,7 +705,7 @@ const DocumentAnalysis: React.FC = () => {
                                 <div className="flex items-center justify-between">
                                     <h4 className="text-sm font-semibold text-emerald-400 flex items-center">
                                         <User className="w-4 h-4 mr-2" />
-                                        Kendi Aksiyonlarım
+                                        Tasarlanan Aksiyonlar
                                     </h4>
                                     <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">
                                         {customActions.length} aksiyon
@@ -605,121 +714,65 @@ const DocumentAnalysis: React.FC = () => {
 
                                 {/* Add New Action Form */}
                                 <div className="p-4 bg-dark-700/50 rounded-xl border-2 border-dashed border-dark-500 hover:border-emerald-500/50 transition-colors">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <input
-                                            type="text"
-                                            value={newActionText}
-                                            onChange={(e) => setNewActionText(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleAddCustomAction()}
-                                            placeholder="Yeni aksiyon ekle..."
-                                            className="flex-1 bg-dark-900/50 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
-                                        />
-                                        <select
-                                            value={newActionPriority}
-                                            onChange={(e) => setNewActionPriority(e.target.value as 'low' | 'medium' | 'high')}
-                                            className="bg-dark-900/50 border border-dark-600 rounded-lg px-2 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
-                                        >
-                                            <option value="low">Düşük</option>
-                                            <option value="medium">Orta</option>
-                                            <option value="high">Yüksek</option>
-                                        </select>
-                                        <button
-                                            onClick={handleAddCustomAction}
-                                            disabled={!newActionText.trim()}
-                                            className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </button>
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={newActionText}
+                                                onChange={(e) => setNewActionText(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleAddCustomAction()}
+                                                placeholder="Yeni aksiyon ekle..."
+                                                className="flex-1 bg-dark-900/50 border border-dark-600 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
+                                            />
+                                            <button
+                                                onClick={handleAddCustomAction}
+                                                disabled={!newActionText.trim()}
+                                                className="p-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-gray-400 shrink-0">Öncelik:</span>
+                                            <div className="flex-1 max-w-[200px]">
+                                                <PriorityDropdown
+                                                    value={newActionPriority}
+                                                    onChange={(val) => setNewActionPriority(val as 'low' | 'medium' | 'high')}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <p className="text-[10px] text-gray-500">
-                                        💡 AI önerilerine ek olarak kendi notlarınızı ekleyin
+                                    <p className="text-[10px] text-gray-500 mt-3">
+                                        💡 Dokümanla ilgili notlarınızı ve aksiyon önerilerinizi ekleyin
                                     </p>
                                 </div>
 
                                 {/* Custom Post-it Cards */}
                                 <div className="space-y-3 min-h-[150px]">
                                     {customActions.length === 0 ? (
-                                        <div className="flex flex-col items-center justify-center py-8 text-center">
-                                            <div className="w-12 h-12 bg-dark-700 rounded-xl flex items-center justify-center mb-3">
-                                                <StickyNote className="w-6 h-6 text-gray-500" />
-                                            </div>
-                                            <p className="text-gray-500 text-sm">Henüz aksiyon eklenmedi</p>
-                                            <p className="text-gray-600 text-xs mt-1">Yukarıdan yeni aksiyon ekleyebilirsiniz</p>
-                                        </div>
+                                        <EmptyState
+                                            variant="no-custom-actions"
+                                            className="py-6"
+                                        />
                                     ) : (
-                                        customActions.map((action, index) => {
-                                            const colors = [
-                                                'from-emerald-500/20 to-emerald-600/10 border-emerald-500/30',
-                                                'from-cyan-500/20 to-cyan-600/10 border-cyan-500/30',
-                                                'from-teal-500/20 to-teal-600/10 border-teal-500/30',
-                                            ];
-                                            const colorClass = colors[index % colors.length];
-
-                                            return (
-                                                <div
-                                                    key={action.id}
-                                                    className={`
-                                                        relative p-4 rounded-xl border-2 transition-all duration-300
-                                                        bg-gradient-to-br ${colorClass}
-                                                        ${action.addedAsTask
-                                                            ? 'opacity-60 scale-[0.98]'
-                                                            : 'hover:scale-[1.02] hover:shadow-lg'
-                                                        }
-                                                    `}
-                                                    style={{
-                                                        transform: `rotate(${(index % 2 === 0 ? 1 : -1) * 0.5}deg)`
-                                                    }}
-                                                >
-                                                    {/* Delete button */}
-                                                    <button
-                                                        onClick={() => handleRemoveCustomAction(action.id)}
-                                                        className="absolute top-2 right-2 p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
-                                                    >
-                                                        <Trash2 className="w-3 h-3" />
-                                                    </button>
-
-                                                    {/* Priority indicator */}
-                                                    <div className={`absolute top-2 left-2 w-2 h-2 rounded-full ${action.priority === 'high'
-                                                            ? 'bg-red-500 animate-pulse'
-                                                            : action.priority === 'medium'
-                                                                ? 'bg-yellow-500'
-                                                                : 'bg-green-500'
-                                                        }`} />
-
-                                                    {/* Content */}
-                                                    <div className="pl-4 pr-6">
-                                                        <p className={`text-sm leading-relaxed ${action.addedAsTask
-                                                                ? 'text-gray-500 line-through'
-                                                                : 'text-gray-200'
-                                                            }`}>
-                                                            {action.text}
-                                                        </p>
-
-                                                        {/* Footer */}
-                                                        <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/10">
-                                                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${action.priority === 'high'
-                                                                    ? 'bg-red-500/20 text-red-400'
-                                                                    : action.priority === 'medium'
-                                                                        ? 'bg-yellow-500/20 text-yellow-400'
-                                                                        : 'bg-green-500/20 text-green-400'
-                                                                }`}>
-                                                                {action.priority === 'high' ? '🔥 Yüksek' : action.priority === 'medium' ? '⚡ Orta' : '✨ Düşük'}
-                                                            </span>
-
-                                                            {!action.addedAsTask && (
-                                                                <button
-                                                                    onClick={() => handleCreateCustomTask(action.id, action.text)}
-                                                                    className="text-emerald-400 hover:text-white text-xs flex items-center font-medium bg-emerald-500/10 px-2 py-1 rounded-lg hover:bg-emerald-500/20 transition"
-                                                                >
-                                                                    <Plus className="w-3 h-3 mr-1" />
-                                                                    Görev Yap
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })
+                                        customActions.map((action, index) => (
+                                            <ActionCard
+                                                key={action.id}
+                                                id={action.id}
+                                                text={action.text}
+                                                priority={action.priority}
+                                                addedAsTask={action.addedAsTask}
+                                                taskId={action.taskId}
+                                                type="custom"
+                                                index={index}
+                                                isProcessing={isCustomActionProcessing === action.id}
+                                                isNewlyAdded={newlyAddedActionId === action.id}
+                                                isBeingConverted={taskCreatedActionId === action.id}
+                                                onCreateTask={handleCreateCustomTask}
+                                                onViewTask={(taskId) => navigate(`/tasks/${taskId}`)}
+                                                onRemove={handleRemoveCustomAction}
+                                            />
+                                        ))
                                     )}
                                 </div>
                             </div>
@@ -826,6 +879,15 @@ const DocumentAnalysis: React.FC = () => {
             <DocumentUploadModal
                 isOpen={isUploadModalOpen}
                 onClose={() => setIsUploadModalOpen(false)}
+            />
+
+            {/* Undo Toast for deleted actions */}
+            <UndoToast
+                message={`"${deletedAction?.text?.substring(0, 30)}${(deletedAction?.text?.length || 0) > 30 ? '...' : ''}" silindi`}
+                isVisible={showUndoToast}
+                onUndo={handleUndoDelete}
+                onDismiss={handleDismissUndo}
+                duration={5000}
             />
         </div>
     );

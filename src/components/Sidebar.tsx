@@ -27,7 +27,7 @@ const Sidebar: React.FC = () => {
     { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { name: 'Projeler', icon: FolderOpen, path: '/projects' },
     { name: 'Görevler', icon: CheckSquare, path: '/tasks' },
-    { name: 'Dokümanlar', icon: FileText, path: '/documents/analysis' },
+    { name: 'Dokümanlar', icon: FileText, path: '/documents' },
     { name: 'KPI\'lar', icon: BarChart2, path: '/kpi' },
     { name: 'Başarılarım', icon: Trophy, path: '/gamification' },
     { name: 'Ekip', icon: Users, path: '/team' },

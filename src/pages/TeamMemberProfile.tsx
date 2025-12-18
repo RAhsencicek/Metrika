@@ -292,7 +292,9 @@ const TeamMemberProfile: React.FC = () => {
                 {activeTasks.map((task) => {
                   const statusConfig = taskStatusClasses[task.status];
                   const priorityConfig = priorityClasses[task.priority];
-                  const project = projects.find(p => p.id === task.projectId);
+                  // Birden fazla projeye bağlı olabilir, ilk projeyi göster
+                  const firstProjectId = task.projectIds[0];
+                  const project = firstProjectId ? projects.find(p => p.id === firstProjectId) : null;
 
                   return (
                     <div
@@ -311,7 +313,10 @@ const TeamMemberProfile: React.FC = () => {
                       <div className="flex items-center gap-4 text-xs text-gray-400">
                         <span className="flex items-center">
                           <div className={`w-2 h-2 rounded-full ${colorClasses[project?.color || 'blue']?.dot || 'bg-gray-500'} mr-1`}></div>
-                          {project?.title || 'Proje Yok'}
+                          {project?.title || (task.projectIds.length === 0 ? 'Projesiz' : 'Proje Yok')}
+                          {task.projectIds.length > 1 && (
+                            <span className="ml-1 text-gray-500">+{task.projectIds.length - 1}</span>
+                          )}
                         </span>
                         <span className="flex items-center">
                           <Clock className="w-3 h-3 mr-1" />

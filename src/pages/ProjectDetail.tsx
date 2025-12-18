@@ -1,12 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
     Plus, AlertCircle, Download, Trash2,
     Filter, Search, Mail, Phone, ExternalLink, Target, TrendingUp, DollarSign, FileText,
-    ChevronDown, Edit3, Copy, Archive, MoreHorizontal
+    ChevronDown, Edit3, Copy, Archive
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useProjectStore, useUserStore } from '../store';
+import { useProjectStore, useUserStore, useDocumentStore } from '../store';
 import { projectStatusClasses } from '../utils/colorUtils';
 import KanbanBoard from '../components/KanbanBoard';
 import ProjectEditModal from '../components/ProjectEditModal';
@@ -14,10 +14,17 @@ import ProjectEditModal from '../components/ProjectEditModal';
 const ProjectDetail: React.FC = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
-    const { getProjectById, deleteProject } = useProjectStore();
+    const { getProjectById, deleteProject, updateProject } = useProjectStore();
     const { getUserById } = useUserStore();
+    const { getDocumentsByProject, getAnalysisByDocumentId, downloadDocument } = useDocumentStore();
 
     const project = getProjectById(id || '');
+
+    // Proje dokümanlarını DocumentStore'dan al
+    const projectDocuments = useMemo(() => {
+        if (!id) return [];
+        return getDocumentsByProject(id);
+    }, [id, getDocumentsByProject]);
 
     const [activeTab, setActiveTab] = useState('Overview');
     const [actionMenuOpen, setActionMenuOpen] = useState(false);
@@ -80,14 +87,22 @@ const ProjectDetail: React.FC = () => {
         { name: 'Team', label: 'Ekip' }
     ];
 
-    // Mock Docs Data
-    const documents = [
-        { id: 1, name: 'Teknik_Spec_v2.pdf', type: 'PDF', size: '4.2 MB', uploader: 'Ahmet Kaya', date: '12 Mayıs 2023' },
-        { id: 2, name: 'UI_Kit_Figma_Link', type: 'Link', size: '-', uploader: 'Ayşe Öztürk', date: '15 Mayıs 2023' },
-        { id: 3, name: 'API_Endpoints.docx', type: 'DOCX', size: '1.8 MB', uploader: 'Ahmet Kaya', date: '18 Mayıs 2023' },
-        { id: 4, name: 'Butce_Planlamasi.xlsx', type: 'XLSX', size: '2.5 MB', uploader: 'Emre Yılmaz', date: '10 Mayıs 2023' },
-        { id: 5, name: 'User_Stories.pdf', type: 'PDF', size: '3.1 MB', uploader: 'Mehmet Yıldız', date: '20 Mayıs 2023' },
-    ];
+    // Dokümana tıklandığında analiz sayfasına yönlendir
+    const handleDocumentClick = (documentId: string) => {
+        const analysis = getAnalysisByDocumentId(documentId);
+        if (analysis) {
+            navigate(`/documents/analysis/${analysis.id}`);
+        } else {
+            // Analiz yoksa dokümanlar sayfasına yönlendir
+            navigate(`/documents`);
+        }
+    };
+
+    // Doküman indirme
+    const handleDownloadDocument = async (e: React.MouseEvent, documentId: string) => {
+        e.stopPropagation();
+        await downloadDocument(documentId);
+    };
 
     // Mock Team Data
     const teamMembers = [
@@ -218,6 +233,20 @@ const ProjectDetail: React.FC = () => {
                             isOpen={editModalOpen}
                             onClose={() => setEditModalOpen(false)}
                             project={project}
+                            onSave={(data) => {
+                                updateProject(project.id, {
+                                    title: data.title,
+                                    description: data.description,
+                                    status: data.status,
+                                    startDate: data.startDate,
+                                    dueDate: data.dueDate,
+                                    budget: parseFloat(data.budget) || project.budget,
+                                });
+                            }}
+                            onDelete={() => {
+                                deleteProject(project.id);
+                                navigate('/projects');
+                            }}
                         />
                     )}
 
@@ -298,12 +327,30 @@ const ProjectDetail: React.FC = () => {
                                         <button onClick={() => setActiveTab('Docs')} className="text-xs text-primary">Tümü</button>
                                     </div>
                                     <div className="space-y-3">
-                                        {documents.slice(0, 3).map((doc, i) => (
-                                            <div key={i} className="flex items-center p-3 bg-dark-900 rounded-lg hover:bg-dark-700 cursor-pointer transition-colors">
-                                                <FileText className="w-5 h-5 text-gray-400 mr-3" />
-                                                <span className="text-sm text-gray-300">{doc.name}</span>
-                                            </div>
-                                        ))}
+                                        {projectDocuments.length > 0 ? (
+                                            projectDocuments.slice(0, 3).map((doc) => (
+                                                <div
+                                                    key={doc.id}
+                                                    onClick={() => handleDocumentClick(doc.id)}
+                                                    className="flex items-center p-3 bg-dark-900 rounded-lg hover:bg-dark-700 cursor-pointer transition-colors group"
+                                                >
+                                                    <div className={`p-2 rounded-lg mr-3 ${doc.type === 'PDF' ? 'bg-red-500/10 text-red-500' :
+                                                        doc.type === 'XLSX' ? 'bg-green-500/10 text-green-500' :
+                                                            doc.type === 'DOCX' ? 'bg-blue-500/10 text-blue-500' :
+                                                                'bg-gray-500/10 text-gray-400'
+                                                        }`}>
+                                                        <FileText className="w-4 h-4" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <span className="text-sm text-gray-300 truncate block">{doc.name}</span>
+                                                        <span className="text-xs text-gray-500">{doc.sizeFormatted}</span>
+                                                    </div>
+                                                    <ExternalLink className="w-4 h-4 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-gray-500 text-center py-4">Bu projede henüz doküman yok</p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -396,49 +443,84 @@ const ProjectDetail: React.FC = () => {
                                         </div>
                                         <button className="p-2 bg-dark-700 rounded-lg text-gray-400 hover:text-white"><Filter className="w-4 h-4" /></button>
                                     </div>
-                                    <div className="text-sm text-gray-400">Toplam 5 Dosya (12.4 MB)</div>
+                                    <div className="text-sm text-gray-400">
+                                        Toplam {projectDocuments.length} Dosya ({
+                                            (projectDocuments.reduce((acc, doc) => acc + doc.size, 0) / (1024 * 1024)).toFixed(1)
+                                        } MB)
+                                    </div>
                                 </div>
 
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-dark-900/50 text-xs text-gray-500 uppercase border-b border-dark-700">
-                                        <tr>
-                                            <th className="px-6 py-4 font-semibold">Dosya Adı</th>
-                                            <th className="px-6 py-4 font-semibold">Tür</th>
-                                            <th className="px-6 py-4 font-semibold">Boyut</th>
-                                            <th className="px-6 py-4 font-semibold">Yükleyen</th>
-                                            <th className="px-6 py-4 font-semibold">Tarih</th>
-                                            <th className="px-6 py-4 font-semibold text-right">İşlem</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-dark-700">
-                                        {documents.map((doc) => (
-                                            <tr key={doc.id} className="hover:bg-dark-700/30 transition group">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center">
-                                                        <div className={`p-2 rounded-lg mr-3 ${doc.type === 'PDF' ? 'bg-red-500/10 text-red-500' :
-                                                            doc.type === 'XLSX' ? 'bg-green-500/10 text-green-500' :
-                                                                doc.type === 'DOCX' ? 'bg-blue-500/10 text-blue-500' :
-                                                                    'bg-gray-500/10 text-gray-400'
-                                                            }`}>
-                                                            {doc.type === 'Link' ? <ExternalLink className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-                                                        </div>
-                                                        <span className="font-medium text-white">{doc.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-gray-400">{doc.type}</td>
-                                                <td className="px-6 py-4 text-gray-400">{doc.size}</td>
-                                                <td className="px-6 py-4 text-gray-300">{doc.uploader}</td>
-                                                <td className="px-6 py-4 text-gray-400">{doc.date}</td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button className="p-1.5 hover:bg-dark-600 rounded text-gray-400 hover:text-white"><Download className="w-4 h-4" /></button>
-                                                        <button className="p-1.5 hover:bg-dark-600 rounded text-gray-400 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
-                                                    </div>
-                                                </td>
+                                {projectDocuments.length > 0 ? (
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-dark-900/50 text-xs text-gray-500 uppercase border-b border-dark-700">
+                                            <tr>
+                                                <th className="px-6 py-4 font-semibold">Dosya Adı</th>
+                                                <th className="px-6 py-4 font-semibold">Tür</th>
+                                                <th className="px-6 py-4 font-semibold">Boyut</th>
+                                                <th className="px-6 py-4 font-semibold">Yükleyen</th>
+                                                <th className="px-6 py-4 font-semibold">Tarih</th>
+                                                <th className="px-6 py-4 font-semibold text-right">İşlem</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-dark-700">
+                                            {projectDocuments.map((doc) => {
+                                                const uploader = getUserById(doc.uploaderId);
+                                                return (
+                                                    <tr
+                                                        key={doc.id}
+                                                        onClick={() => handleDocumentClick(doc.id)}
+                                                        className="hover:bg-dark-700/30 transition group cursor-pointer"
+                                                    >
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center">
+                                                                <div className={`p-2 rounded-lg mr-3 ${doc.type === 'PDF' ? 'bg-red-500/10 text-red-500' :
+                                                                    doc.type === 'XLSX' ? 'bg-green-500/10 text-green-500' :
+                                                                        doc.type === 'DOCX' ? 'bg-blue-500/10 text-blue-500' :
+                                                                            'bg-gray-500/10 text-gray-400'
+                                                                    }`}>
+                                                                    <FileText className="w-4 h-4" />
+                                                                </div>
+                                                                <span className="font-medium text-white">{doc.name}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-gray-400">{doc.type}</td>
+                                                        <td className="px-6 py-4 text-gray-400">{doc.sizeFormatted}</td>
+                                                        <td className="px-6 py-4 text-gray-300">{uploader?.name || 'Bilinmiyor'}</td>
+                                                        <td className="px-6 py-4 text-gray-400">
+                                                            {new Date(doc.uploadDate).toLocaleDateString('tr-TR', {
+                                                                day: 'numeric', month: 'long', year: 'numeric'
+                                                            })}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <button
+                                                                    onClick={(e) => handleDownloadDocument(e, doc.id)}
+                                                                    className="p-1.5 hover:bg-dark-600 rounded text-gray-400 hover:text-white"
+                                                                    title="İndir"
+                                                                >
+                                                                    <Download className="w-4 h-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleDocumentClick(doc.id); }}
+                                                                    className="p-1.5 hover:bg-dark-600 rounded text-gray-400 hover:text-primary"
+                                                                    title="Analiz Et"
+                                                                >
+                                                                    <ExternalLink className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div className="p-12 text-center">
+                                        <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                                        <h3 className="text-lg font-semibold text-white mb-2">Henüz Doküman Yok</h3>
+                                        <p className="text-sm text-gray-400">Bu projede henüz doküman bulunmuyor. Doküman yüklemek için yukarıdaki "Dosya Yükle" butonunu kullanın.</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

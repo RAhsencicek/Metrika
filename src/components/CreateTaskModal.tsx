@@ -30,7 +30,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
     const validate = () => {
         const newErrors: Record<string, string> = {};
         if (!formData.title.trim()) newErrors.title = 'Görev başlığı gerekli';
-        if (!formData.projectId) newErrors.projectId = 'Proje seçimi gerekli';
+        // Proje seçimi artık opsiyonel
         if (!formData.assigneeId) newErrors.assigneeId = 'Atanan kişi gerekli';
         if (!formData.dueDate) newErrors.dueDate = 'Bitiş tarihi gerekli';
         setErrors(newErrors);
@@ -47,7 +47,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
             description: formData.description,
             status: 'Todo' as TaskStatus,
             priority: formData.priority,
-            projectId: formData.projectId,
+            projectIds: formData.projectId ? [formData.projectId] : [], // Array olarak, boş olabilir
             assigneeId: formData.assigneeId,
             dueDate: formData.dueDate,
             estimatedHours: formData.estimatedHours,
@@ -135,19 +135,18 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1">
-                                Proje *
+                                Proje (Opsiyonel)
                             </label>
                             <select
                                 value={formData.projectId}
                                 onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
-                                className={`w-full bg-dark-900 border ${errors.projectId ? 'border-red-500' : 'border-dark-600'} rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary`}
+                                className="w-full bg-dark-900 border border-dark-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
                             >
-                                <option value="">Proje seçin</option>
+                                <option value="">Projesiz</option>
                                 {projects.map(project => (
                                     <option key={project.id} value={project.id}>{project.title}</option>
                                 ))}
                             </select>
-                            {errors.projectId && <p className="text-red-400 text-xs mt-1">{errors.projectId}</p>}
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, UserPlus, Mail, Phone, Briefcase, MapPin } from 'lucide-react';
+import { X, UserPlus, Mail, Phone, Briefcase } from 'lucide-react';
 import { useUserStore } from '../store';
 
 interface AddMemberModalProps {
