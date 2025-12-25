@@ -18,8 +18,12 @@ const LinkedProjectsCard: React.FC<LinkedProjectsCardProps> = ({ taskId, project
     const { addToast } = useToastStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
 
+    // Safe access to arrays that could be undefined
+    const safeProjects = projects || [];
+    const safeProjectIds = projectIds || [];
+
     // projectIds'ye göre projeleri filtrele
-    const linkedProjects = projects.filter(p => projectIds.includes(p.id));
+    const linkedProjects = safeProjects.filter(p => safeProjectIds.includes(p.id));
 
     const handleRemoveFromProject = (projectId: string, projectTitle: string) => {
         removeTaskFromProject(taskId, projectId);

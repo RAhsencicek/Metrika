@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -11,14 +11,26 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { useUserStore, useProjectStore, useTaskStore } from '../store';
+import { useUserStore, useProjectStore, useTaskStore, useAuthStore } from '../store';
 import { colorClasses, priorityClasses } from '../utils/colorUtils';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser } = useUserStore();
-  const { projects } = useProjectStore();
-  const { tasks } = useTaskStore();
+  const { user } = useAuthStore();
+  const { currentUser, fetchCurrentUser } = useUserStore();
+  const { projects, fetchProjects, isLoading: projectsLoading } = useProjectStore();
+  const { tasks, fetchTasks, isLoading: tasksLoading } = useTaskStore();
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchProjects();
+    fetchTasks();
+    if (!currentUser) {
+      fetchCurrentUser();
+    }
+  }, [fetchProjects, fetchTasks, fetchCurrentUser, currentUser]);
+
+  const isLoading = projectsLoading || tasksLoading;
 
   // Calculate real stats
   const activeProjects = projects.filter(p => p.status === 'Active');
@@ -53,63 +65,78 @@ const Dashboard: React.FC = () => {
     return date.toLocaleDateString('tr-TR', { weekday: 'long' });
   };
 
+  // Get display name (prefer auth user, fallback to currentUser from store)
+  const displayName = user?.name || currentUser?.name || 'Kullanıcı';
+
   return (
     <div className="space-y-6 animate-fade-in pb-10">
+      {/* Loading State */}
+      {isLoading && projects.length === 0 && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+            <p className="text-gray-400 text-sm">Veriler yükleniyor...</p>
+          </div>
+        </div>
+      )}
+
       {/* Welcome & Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-primary/20 to-primary/5 p-6 rounded-2xl border border-primary/20 flex flex-col justify-between hover-lift card-shine">
-          <div>
-            <h2 className="text-xl font-bold text-white mb-1">
-              Hoş Geldiniz, {currentUser?.name?.split(' ')[0] || 'Kullanıcı'}!
-            </h2>
-            <p className="text-sm text-gray-400">Bugün projelerinizde harika işler çıkarma zamanı.</p>
-          </div>
-          <button
-            onClick={() => navigate('/projects/new')}
-            className="mt-4 flex items-center justify-center w-full py-2 gradient-primary hover:opacity-90 text-white rounded-lg transition-all text-sm font-medium shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02]"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Yeni Proje
-          </button>
-        </div>
-
-        <div className="bg-dark-800 p-6 rounded-2xl border border-dark-700 hover-lift card-shine animate-fade-in stagger-1" style={{ animationFillMode: 'both' }}>
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-blue-500/10 rounded-lg icon-hover-bounce">
-              <TrendingUp className="w-5 h-5 text-blue-500" />
+      {(!isLoading || projects.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-gradient-to-br from-primary/20 to-primary/5 p-6 rounded-2xl border border-primary/20 flex flex-col justify-between hover-lift card-shine">
+            <div>
+              <h2 className="text-xl font-bold text-white mb-1">
+                Hoş Geldiniz, {displayName.split(' ')[0]}!
+              </h2>
+              <p className="text-sm text-gray-400">Bugün projelerinizde harika işler çıkarma zamanı.</p>
             </div>
-            <span className="text-xs font-medium text-green-400 bg-green-400/10 px-2 py-1 rounded-full animate-pulse">
-              +{projects.length > 0 ? Math.round((activeProjects.length / projects.length) * 100) : 0}%
-            </span>
+            <button
+              onClick={() => navigate('/projects/new')}
+              className="mt-4 flex items-center justify-center w-full py-2 gradient-primary hover:opacity-90 text-white rounded-lg transition-all text-sm font-medium shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02]"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Yeni Proje
+            </button>
           </div>
-          <div className="text-3xl font-bold text-white mb-1 animate-count-up">{projects.length}</div>
-          <p className="text-sm text-gray-400">Toplam Proje</p>
-        </div>
 
-        <div className="bg-dark-800 p-6 rounded-2xl border border-dark-700 hover-lift card-shine animate-fade-in stagger-2" style={{ animationFillMode: 'both' }}>
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-purple-500/10 rounded-lg icon-hover-bounce">
-              <Zap className="w-5 h-5 text-purple-500 animate-float" />
+          <div className="bg-dark-800 p-6 rounded-2xl border border-dark-700 hover-lift card-shine animate-fade-in stagger-1" style={{ animationFillMode: 'both' }}>
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-2 bg-blue-500/10 rounded-lg icon-hover-bounce">
+                <TrendingUp className="w-5 h-5 text-blue-500" />
+              </div>
+              <span className="text-xs font-medium text-green-400 bg-green-400/10 px-2 py-1 rounded-full animate-pulse">
+                +{projects.length > 0 ? Math.round((activeProjects.length / projects.length) * 100) : 0}%
+              </span>
             </div>
-            <span className="text-xs font-medium text-green-400 bg-green-400/10 px-2 py-1 rounded-full">
-              +{activeTasks.length}
-            </span>
+            <div className="text-3xl font-bold text-white mb-1 animate-count-up">{projects.length}</div>
+            <p className="text-sm text-gray-400">Toplam Proje</p>
           </div>
-          <div className="text-3xl font-bold text-white mb-1 animate-count-up" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>{activeTasks.length}</div>
-          <p className="text-sm text-gray-400">Aktif Görevler</p>
-        </div>
 
-        <div className="bg-dark-800 p-6 rounded-2xl border border-dark-700 hover-lift card-shine animate-fade-in stagger-3" style={{ animationFillMode: 'both' }}>
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-green-500/10 rounded-lg icon-hover-bounce">
-              <CheckCircle className="w-5 h-5 text-green-500" />
+          <div className="bg-dark-800 p-6 rounded-2xl border border-dark-700 hover-lift card-shine animate-fade-in stagger-2" style={{ animationFillMode: 'both' }}>
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-2 bg-purple-500/10 rounded-lg icon-hover-bounce">
+                <Zap className="w-5 h-5 text-purple-500 animate-float" />
+              </div>
+              <span className="text-xs font-medium text-green-400 bg-green-400/10 px-2 py-1 rounded-full">
+                +{activeTasks.length}
+              </span>
             </div>
-            <span className="text-xs font-medium text-gray-400">Bu Ay</span>
+            <div className="text-3xl font-bold text-white mb-1 animate-count-up" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>{activeTasks.length}</div>
+            <p className="text-sm text-gray-400">Aktif Görevler</p>
           </div>
-          <div className="text-3xl font-bold text-white mb-1 animate-count-up" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>{completedTasks.length}</div>
-          <p className="text-sm text-gray-400">Tamamlanan Görevler</p>
+
+          <div className="bg-dark-800 p-6 rounded-2xl border border-dark-700 hover-lift card-shine animate-fade-in stagger-3" style={{ animationFillMode: 'both' }}>
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-2 bg-green-500/10 rounded-lg icon-hover-bounce">
+                <CheckCircle className="w-5 h-5 text-green-500" />
+              </div>
+              <span className="text-xs font-medium text-gray-400">Bu Ay</span>
+            </div>
+            <div className="text-3xl font-bold text-white mb-1 animate-count-up" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>{completedTasks.length}</div>
+            <p className="text-sm text-gray-400">Tamamlanan Görevler</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Active Projects */}

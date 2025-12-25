@@ -160,15 +160,15 @@ const ProjectDetail: React.FC = () => {
                         </div>
                         <div className="mt-4 md:mt-0 flex items-center gap-4">
                             <div className="flex -space-x-2">
-                                {project.teamMemberIds.slice(0, 4).map(memberId => {
+                                {(project.teamMemberIds || []).slice(0, 4).map(memberId => {
                                     const member = getUserById(memberId);
                                     return member ? (
                                         <img key={member.id} src={`https://picsum.photos/id/${member.avatar}/40/40`} className="w-8 h-8 rounded-full border-2 border-dark-900" alt={member.name} />
                                     ) : null;
                                 })}
-                                {project.teamMemberIds.length > 4 && (
+                                {(project.teamMemberIds?.length || 0) > 4 && (
                                     <div className="w-8 h-8 rounded-full bg-dark-700 border-2 border-dark-900 flex items-center justify-center text-xs text-white cursor-pointer hover:bg-dark-600">
-                                        +{project.teamMemberIds.length - 4}
+                                        +{(project.teamMemberIds?.length || 0) - 4}
                                     </div>
                                 )}
                             </div>

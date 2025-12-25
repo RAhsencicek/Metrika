@@ -25,12 +25,14 @@ const TaskDetail: React.FC = () => {
     const [isDocModalOpen, setIsDocModalOpen] = useState(false);
 
     const task = getTaskById(id || '');
-    // Birden fazla projeye bağlı olabilir
-    const linkedProjects = task ? task.projectIds.map(pid => getProjectById(pid)).filter(Boolean) : [];
+    // Birden fazla projeye bağlı olabilir - null safety for projectIds
+    const projectIds = task?.projectIds || [];
+    const linkedProjects = task ? projectIds.map(pid => getProjectById(pid)).filter(Boolean) : [];
     const assignee = task ? getUserById(task.assigneeId) : null;
 
     // Göreve bağlı doküman kontrolü
-    const hasLinkedDocuments = task?.documentIds && task.documentIds.length > 0;
+    const documentIds = task?.documentIds || [];
+    const hasLinkedDocuments = documentIds.length > 0;
 
     // Doküman modalnı aç/kapat
     const handleViewDocument = () => {

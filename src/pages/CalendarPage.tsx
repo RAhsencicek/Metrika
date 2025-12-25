@@ -1,15 +1,25 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Clock } from 'lucide-react';
 import { useTaskStore, useProjectStore } from '../store';
 import AddEventModal from '../components/AddEventModal';
 
 const CalendarPage: React.FC = () => {
-    const { tasks } = useTaskStore();
-    const { getProjectById } = useProjectStore();
+    const { tasks, fetchTasks } = useTaskStore();
+    const { getProjectById, fetchProjects } = useProjectStore();
 
+    // All useState hooks MUST be called before any conditional returns (React rules of hooks)
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isAddEventOpen, setIsAddEventOpen] = useState(false);
     const [selectedEventDate, setSelectedEventDate] = useState<Date | undefined>(undefined);
+
+    // Fetch data on mount
+    useEffect(() => {
+        fetchTasks();
+        fetchProjects();
+    }, [fetchTasks, fetchProjects]);
+
+    // Safe access to tasks array that might be undefined from API
+    const safeTasks = tasks || [];
 
     // Get current month info
     const currentYear = currentDate.getFullYear();
@@ -63,21 +73,39 @@ const CalendarPage: React.FC = () => {
         return [...prevMonthDays, ...currentMonthDays, ...nextMonthDays];
     }, [currentYear, currentMonth]);
 
+    // Helper function to format date as YYYY-MM-DD using local timezone
+    const formatLocalDate = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     // Get events for a specific date
     const getEventsForDate = (date: Date) => {
-        const dateStr = date.toISOString().split('T')[0];
-        return tasks.filter(task => task.dueDate === dateStr).map(task => {
-            // Birden fazla projeye bağlı olabilir, ilk projeyi göster
-            const firstProjectId = task.projectIds[0];
-            const project = firstProjectId ? getProjectById(firstProjectId) : null;
-            return {
-                id: task.id,
-                title: task.title,
-                type: task.status === 'Done' ? 'completed' : 'task',
-                color: project?.color || 'blue',
-                projectName: project?.title || ''
-            };
-        });
+        // Use local date format to avoid timezone issues
+        const dateStr = formatLocalDate(date);
+        return safeTasks
+            .filter(task => {
+                if (!task.dueDate) return false;
+                // Normalize task dueDate to YYYY-MM-DD format for comparison
+                const taskDateStr = task.dueDate.includes('T')
+                    ? task.dueDate.split('T')[0]
+                    : task.dueDate;
+                return taskDateStr === dateStr;
+            })
+            .map(task => {
+                const projectIds = task.projectIds || [];
+                const firstProjectId = projectIds[0];
+                const project = firstProjectId ? getProjectById(firstProjectId) : null;
+                return {
+                    id: task.id,
+                    title: task.title,
+                    type: task.status === 'Done' ? 'completed' : 'task',
+                    color: project?.color || 'blue',
+                    projectName: project?.title || ''
+                };
+            });
     };
 
     // Check if a date is today
@@ -111,20 +139,16 @@ const CalendarPage: React.FC = () => {
         orange: 'bg-orange-500/10 text-orange-300 border-orange-500',
     };
 
-    // Open modal for adding event
-    const openAddEvent = (date?: Date) => {
-        setSelectedEventDate(date);
-        setIsAddEventOpen(true);
-    };
-
     return (
-        <div className="pb-20 animate-fade-in h-full flex flex-col">
-            {/* Add Event Modal */}
-            <AddEventModal
-                isOpen={isAddEventOpen}
-                onClose={() => setIsAddEventOpen(false)}
-                selectedDate={selectedEventDate}
-            />
+        <div className="pb-20 animate-fade-in h-full flex flex-col overflow-auto">
+            {/* Add Event Modal - only render when open */}
+            {isAddEventOpen && (
+                <AddEventModal
+                    isOpen={isAddEventOpen}
+                    onClose={() => setIsAddEventOpen(false)}
+                    selectedDate={selectedEventDate}
+                />
+            )}
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                 <h1 className="text-2xl font-bold text-white">Takvim</h1>
@@ -153,7 +177,7 @@ const CalendarPage: React.FC = () => {
                         </button>
                     </div>
                     <button
-                        onClick={() => openAddEvent()}
+                        onClick={() => setIsAddEventOpen(true)}
                         className="flex items-center px-4 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-primary/20"
                     >
                         <Plus className="w-4 h-4 mr-2" />
@@ -162,7 +186,7 @@ const CalendarPage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex-1 bg-dark-800 rounded-xl border border-dark-700 overflow-hidden flex flex-col">
+            <div className="bg-dark-800 rounded-xl border border-dark-700">
                 {/* Weekday Headers */}
                 <div className="grid grid-cols-7 border-b border-dark-700 bg-dark-900/50">
                     {weekDays.map(day => (
@@ -174,7 +198,7 @@ const CalendarPage: React.FC = () => {
                 </div>
 
                 {/* Calendar Grid */}
-                <div className="grid grid-cols-7 flex-1 auto-rows-fr">
+                <div className="grid grid-cols-7">
                     {calendarDays.map((dayInfo, index) => {
                         const dayEvents = getEventsForDate(dayInfo.date);
                         const today = isToday(dayInfo.date);
@@ -182,8 +206,7 @@ const CalendarPage: React.FC = () => {
                         return (
                             <div
                                 key={index}
-                                className={`min-h-[100px] sm:min-h-[120px] p-2 border-b border-r border-dark-700/50 relative hover:bg-dark-700/20 transition-colors group ${!dayInfo.isCurrentMonth ? 'bg-dark-900/20' : ''
-                                    }`}
+                                className={`min-h-[100px] sm:min-h-[120px] p-2 border-b border-r border-dark-700/50 relative hover:bg-dark-700/20 transition-colors group ${!dayInfo.isCurrentMonth ? 'bg-dark-900/20' : ''}`}
                             >
                                 <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${today
                                     ? 'bg-primary text-white shadow-lg shadow-primary/30'
@@ -198,8 +221,7 @@ const CalendarPage: React.FC = () => {
                                     {dayEvents.slice(0, 3).map((event) => (
                                         <div
                                             key={event.id}
-                                            className={`text-[10px] px-1.5 py-0.5 rounded border-l-2 truncate cursor-pointer hover:opacity-80 transition ${eventColorClasses[event.color] || eventColorClasses.blue
-                                                }`}
+                                            className={`text-[10px] px-1.5 py-0.5 rounded border-l-2 truncate cursor-pointer hover:opacity-80 transition ${eventColorClasses[event.color] || eventColorClasses.blue}`}
                                             title={`${event.title} - ${event.projectName}`}
                                         >
                                             {event.title}
@@ -216,7 +238,8 @@ const CalendarPage: React.FC = () => {
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        openAddEvent(dayInfo.date);
+                                        setSelectedEventDate(dayInfo.date);
+                                        setIsAddEventOpen(true);
                                     }}
                                     className="absolute bottom-1 right-1 p-1 rounded-full bg-dark-700 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-white hover:bg-primary transition-all"
                                     title="Bu güne etkinlik ekle"
@@ -229,35 +252,82 @@ const CalendarPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Upcoming Tasks Summary */}
-            <div className="mt-6 bg-dark-800 rounded-xl border border-dark-700 p-4">
-                <h3 className="font-semibold text-white mb-3 flex items-center">
-                    <Clock className="w-4 h-4 mr-2 text-primary" />
-                    Yaklaşan Görevler
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {tasks
-                        .filter(t => t.status !== 'Done' && new Date(t.dueDate) >= new Date())
-                        .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-                        .slice(0, 4)
-                        .map(task => {
-                            // Birden fazla projeye bağlı olabilir, ilk projeyi göster
-                            const firstProjectId = task.projectIds[0];
-                            const project = firstProjectId ? getProjectById(firstProjectId) : null;
-                            const daysLeft = Math.ceil((new Date(task.dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                            return (
-                                <div key={task.id} className="bg-dark-900 p-3 rounded-lg border border-dark-600">
-                                    <p className="text-sm font-medium text-white truncate">{task.title}</p>
-                                    <p className="text-xs text-gray-500 mt-1">{project?.title || 'Projesiz'}</p>
-                                    <p className={`text-xs mt-2 ${daysLeft <= 2 ? 'text-red-400' : daysLeft <= 7 ? 'text-yellow-400' : 'text-green-400'}`}>
-                                        {daysLeft === 0 ? 'Bugün' : daysLeft === 1 ? 'Yarın' : `${daysLeft} gün kaldı`}
-                                    </p>
-                                </div>
-                            );
-                        })}
-                    {tasks.filter(t => t.status !== 'Done' && new Date(t.dueDate) >= new Date()).length === 0 && (
-                        <p className="text-gray-500 text-sm col-span-full">Yaklaşan görev bulunmuyor</p>
-                    )}
+            {/* Sidebar with upcoming events */}
+            <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2 bg-dark-800 rounded-xl p-4 border border-dark-700">
+                    <h3 className="text-white font-medium mb-3">Bu Aydaki Görevler</h3>
+                    <div className="space-y-2">
+                        {safeTasks
+                            .filter(task => {
+                                if (!task.dueDate) return false;
+                                const taskDate = new Date(task.dueDate);
+                                return taskDate.getMonth() === currentMonth && taskDate.getFullYear() === currentYear;
+                            })
+                            .slice(0, 5)
+                            .map(task => {
+                                const projectIds = task.projectIds || [];
+                                const firstProjectId = projectIds[0];
+                                const project = firstProjectId ? getProjectById(firstProjectId) : null;
+                                return (
+                                    <div key={task.id} className="flex items-center justify-between bg-dark-700/50 rounded-lg p-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-2 h-2 rounded-full ${task.status === 'Done' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+                                            <div>
+                                                <p className="text-sm text-white">{task.title}</p>
+                                                <p className="text-xs text-gray-500">{project?.title || 'Genel'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                                            <Clock className="w-3 h-3" />
+                                            {task.dueDate ? new Date(task.dueDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : '-'}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        {safeTasks.filter(task => {
+                            if (!task.dueDate) return false;
+                            const taskDate = new Date(task.dueDate);
+                            return taskDate.getMonth() === currentMonth && taskDate.getFullYear() === currentYear;
+                        }).length === 0 && (
+                                <p className="text-sm text-gray-500 text-center py-4">Bu ay için görev bulunmuyor</p>
+                            )}
+                    </div>
+                </div>
+
+                <div className="bg-dark-800 rounded-xl p-4 border border-dark-700">
+                    <h3 className="text-white font-medium mb-3">Takvim İstatistikleri</h3>
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-400">Bu aydaki görevler</span>
+                            <span className="text-white font-medium">
+                                {safeTasks.filter(task => {
+                                    if (!task.dueDate) return false;
+                                    const taskDate = new Date(task.dueDate);
+                                    return taskDate.getMonth() === currentMonth && taskDate.getFullYear() === currentYear;
+                                }).length}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-400">Tamamlanan</span>
+                            <span className="text-green-400 font-medium">
+                                {safeTasks.filter(task => {
+                                    if (!task.dueDate) return false;
+                                    const taskDate = new Date(task.dueDate);
+                                    return task.status === 'Done' && taskDate.getMonth() === currentMonth && taskDate.getFullYear() === currentYear;
+                                }).length}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-400">Devam eden</span>
+                            <span className="text-blue-400 font-medium">
+                                {safeTasks.filter(task => {
+                                    if (!task.dueDate) return false;
+                                    const taskDate = new Date(task.dueDate);
+                                    return task.status !== 'Done' && taskDate.getMonth() === currentMonth && taskDate.getFullYear() === currentYear;
+                                }).length}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

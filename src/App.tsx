@@ -1,5 +1,5 @@
-import React from 'react';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
@@ -19,7 +19,35 @@ import TeamPage from './pages/TeamPage';
 import TeamMemberProfile from './pages/TeamMemberProfile';
 import KPIPage from './pages/KPIPage';
 import HelpPage from './pages/HelpPage';
+import LoginPage from './pages/LoginPage';
 import ToastContainer from './components/ToastContainer';
+import { useAuthStore } from './store';
+
+// Protected Route wrapper
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
 
 // Layout wrapper with Sidebar and Header
 const LayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -39,37 +67,50 @@ const LayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 const App: React.FC = () => {
   return (
     <Router>
-      <LayoutContent>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          {/* Projects */}
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/projects/new" element={<CreateProjectWizard />} />
-          <Route path="/projects/:id" element={<ProjectDetail />} />
-          {/* Tasks */}
-          <Route path="/tasks" element={<TasksPage />} />
-          <Route path="/tasks/:id" element={<TaskDetail />} />
-          {/* Documents */}
-          <Route path="/documents" element={<DocumentsPage />} />
-          <Route path="/documents/analysis" element={<DocumentAnalysis />} />
-          <Route path="/documents/analysis/:id" element={<DocumentAnalysis />} />
-          {/* Gamification */}
-          <Route path="/gamification" element={<GamificationProfile />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          {/* Other Pages */}
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          {/* Team */}
-          <Route path="/team" element={<TeamPage />} />
-          <Route path="/team/:id" element={<TeamMemberProfile />} />
-          {/* KPI & Help */}
-          <Route path="/kpi" element={<KPIPage />} />
-          <Route path="/help" element={<HelpPage />} />
-          {/* Fallback route */}
-          <Route path="*" element={<Dashboard />} />
-        </Routes>
-      </LayoutContent>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Protected Routes with Layout */}
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <LayoutContent>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  {/* Projects */}
+                  <Route path="/projects" element={<ProjectsPage />} />
+                  <Route path="/projects/new" element={<CreateProjectWizard />} />
+                  <Route path="/projects/:id" element={<ProjectDetail />} />
+                  {/* Tasks */}
+                  <Route path="/tasks" element={<TasksPage />} />
+                  <Route path="/tasks/:id" element={<TaskDetail />} />
+                  {/* Documents */}
+                  <Route path="/documents" element={<DocumentsPage />} />
+                  <Route path="/documents/analysis" element={<DocumentAnalysis />} />
+                  <Route path="/documents/analysis/:id" element={<DocumentAnalysis />} />
+                  {/* Gamification */}
+                  <Route path="/gamification" element={<GamificationProfile />} />
+                  <Route path="/leaderboard" element={<Leaderboard />} />
+                  {/* Other Pages */}
+                  <Route path="/notifications" element={<Notifications />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/calendar" element={<CalendarPage />} />
+                  {/* Team */}
+                  <Route path="/team" element={<TeamPage />} />
+                  <Route path="/team/:id" element={<TeamMemberProfile />} />
+                  {/* KPI & Help */}
+                  <Route path="/kpi" element={<KPIPage />} />
+                  <Route path="/help" element={<HelpPage />} />
+                  {/* Fallback route */}
+                  <Route path="*" element={<Dashboard />} />
+                </Routes>
+              </LayoutContent>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
       {/* Global Toast Notifications */}
       <ToastContainer />
     </Router>

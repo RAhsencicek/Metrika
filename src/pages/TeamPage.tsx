@@ -1,20 +1,25 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Mail, Phone, MoreHorizontal, Plus, Briefcase, MapPin } from 'lucide-react';
+import { Search, Mail, Phone, MoreHorizontal, Plus, Briefcase, MapPin, Loader2 } from 'lucide-react';
 import { useUserStore } from '../store';
 import AddMemberModal from '../components/AddMemberModal';
 
 const TeamPage: React.FC = () => {
     const navigate = useNavigate();
-    const { users } = useUserStore();
+    const { users, fetchTeamMembers, isLoading } = useUserStore();
 
     const [departmentFilter, setDepartmentFilter] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+    // Fetch users from API on mount
+    useEffect(() => {
+        fetchTeamMembers();
+    }, [fetchTeamMembers]);
+
     // Get unique departments from users
     const departments = useMemo(() => {
-        const depts = [...new Set(users.map(u => u.department))];
+        const depts = [...new Set(users.map(u => u.department).filter(Boolean))];
         return ['All', ...depts];
     }, [users]);
 
@@ -24,7 +29,7 @@ const TeamPage: React.FC = () => {
             const matchesDept = departmentFilter === 'All' || member.department === departmentFilter;
             const matchesSearch = searchQuery === '' ||
                 member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                member.role.toLowerCase().includes(searchQuery.toLowerCase());
+                (member.role || '').toLowerCase().includes(searchQuery.toLowerCase());
             return matchesDept && matchesSearch;
         });
     }, [users, departmentFilter, searchQuery]);
@@ -48,6 +53,19 @@ const TeamPage: React.FC = () => {
             default: return 'Çevrimdışı';
         }
     };
+
+    // Loading state
+    if (isLoading) {
+        return (
+            <div className="pb-20 animate-fade-in">
+                <div className="flex flex-col items-center justify-center py-16">
+                    <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">Ekip Yükleniyor...</h3>
+                    <p className="text-gray-400 text-sm">Lütfen bekleyin</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="pb-20 animate-fade-in">

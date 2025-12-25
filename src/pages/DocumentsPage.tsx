@@ -22,6 +22,7 @@ import {
     Sparkles,
     ArrowUpDown,
     ArrowRight,
+    Loader2,
 } from 'lucide-react';
 import { useDocumentStore, useProjectStore, useNotificationStore } from '../store';
 import DocumentUploadModal from '../components/DocumentUploadModal';
@@ -34,8 +35,8 @@ const VIEW_MODE_KEY = 'metrika-documents-view-mode';
 
 const DocumentsPage: React.FC = () => {
     const navigate = useNavigate();
-    const { documents, analyses, deleteDocument, triggerAnalysis, setCurrentAnalysis } = useDocumentStore();
-    const { projects } = useProjectStore();
+    const { documents, analyses, deleteDocument, triggerAnalysis, setCurrentAnalysis, fetchDocuments, isLoading } = useDocumentStore();
+    const { projects, fetchProjects } = useProjectStore();
     const { addNotification } = useNotificationStore();
 
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -51,6 +52,12 @@ const DocumentsPage: React.FC = () => {
     const [sortAsc, setSortAsc] = useState(false);
     const [showFilterMenu, setShowFilterMenu] = useState(false);
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
+    // Fetch documents from API on mount
+    useEffect(() => {
+        fetchDocuments();
+        fetchProjects();
+    }, [fetchDocuments, fetchProjects]);
 
     // Save view mode to localStorage whenever it changes
     useEffect(() => {
@@ -435,7 +442,13 @@ const DocumentsPage: React.FC = () => {
             </div>
 
             {/* Documents Display */}
-            {filteredDocuments.length === 0 ? (
+            {isLoading ? (
+                <div className="bg-dark-800 rounded-xl border border-dark-700 p-12 text-center">
+                    <Loader2 className="w-12 h-12 text-primary mx-auto mb-4 animate-spin" />
+                    <h3 className="text-lg font-semibold text-white mb-2">Dokümanlar Yükleniyor...</h3>
+                    <p className="text-gray-400 text-sm">Lütfen bekleyin</p>
+                </div>
+            ) : filteredDocuments.length === 0 ? (
                 <div className="bg-dark-800 rounded-xl border border-dark-700 p-12 text-center hover-lift">
                     <div className="w-16 h-16 bg-dark-700 rounded-full flex items-center justify-center mx-auto mb-4">
                         <FileText className="w-8 h-8 text-gray-500" />

@@ -57,16 +57,20 @@ const TasksPage: React.FC = () => {
   const enhancedTasks = useMemo(() => {
     return tasks.map(task => {
       // Birden fazla projeye bağlı olabilir, ilk projeyi göster
-      const firstProjectId = task.projectIds[0];
+      const projectIds = task.projectIds || [];
+      const firstProjectId = projectIds[0];
       const project = firstProjectId ? getProjectById(firstProjectId) : null;
-      const assignee = getUserById(task.assigneeId);
+
+      // Use assigneeName/Avatar from task if available (populated from API), fallback to getUserById
+      const assigneeFromStore = task.assigneeName ? null : getUserById(task.assigneeId);
+
       return {
         ...task,
-        projectName: project?.title || (task.projectIds.length === 0 ? 'Projesiz' : 'Proje Yok'),
+        projectName: project?.title || (projectIds.length === 0 ? 'Projesiz' : 'Proje Yok'),
         projectColor: project?.color || 'blue',
-        projectCount: task.projectIds.length,
-        assigneeName: assignee?.name || 'Atanmamış',
-        assigneeAvatar: assignee?.avatar || 64,
+        projectCount: projectIds.length,
+        assigneeName: task.assigneeName || assigneeFromStore?.name || 'Atanmamış',
+        assigneeAvatar: task.assigneeAvatar || assigneeFromStore?.avatar || 64,
       };
     });
   }, [tasks, getProjectById, getUserById]);

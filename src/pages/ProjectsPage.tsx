@@ -1,16 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Search, Filter, MoreHorizontal, Users,
   TrendingUp, Clock, CheckCircle, AlertCircle,
-  LayoutGrid, List
+  LayoutGrid, List, Loader2
 } from 'lucide-react';
 import { useProjectStore, useUserStore } from '../store';
 import { colorClasses, projectStatusClasses, methodologyClasses } from '../utils/colorUtils';
 
 const ProjectsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { projects } = useProjectStore();
+  const { projects, fetchProjects, isLoading } = useProjectStore();
   const { getUserById } = useUserStore();
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -18,11 +18,16 @@ const ProjectsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [methodologyFilter, setMethodologyFilter] = useState<string>('All');
 
+  // Fetch projects from API on mount
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
   // Filtering
   const filteredProjects = useMemo(() => {
     return projects.filter(project => {
       const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project.description.toLowerCase().includes(searchQuery.toLowerCase());
+        (project.description || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'All' || project.status === statusFilter;
       const matchesMethodology = methodologyFilter === 'All' || project.methodology === methodologyFilter;
       return matchesSearch && matchesStatus && matchesMethodology;
@@ -36,6 +41,19 @@ const ProjectsPage: React.FC = () => {
     completed: projects.filter(p => p.status === 'Completed').length,
     atRisk: projects.filter(p => p.status === 'At Risk').length,
   }), [projects]);
+
+  // Loading state
+  if (isLoading && projects.length === 0) {
+    return (
+      <div className="pb-20 animate-fade-in">
+        <div className="flex flex-col items-center justify-center py-16">
+          <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+          <h3 className="text-lg font-semibold text-white mb-2">Projeler Yükleniyor...</h3>
+          <p className="text-gray-400 text-sm">Lütfen bekleyin</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-20 animate-fade-in">
@@ -238,7 +256,12 @@ const ProjectsPage: React.FC = () => {
                         <span>Bitiş</span>
                       </div>
                       <p className="text-sm font-medium text-white mt-0.5">
-                        {new Date(project.dueDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                        {(() => {
+                          const dateStr = project.dueDate || project.endDate;
+                          if (!dateStr) return 'Belirlenmedi';
+                          const date = new Date(dateStr);
+                          return isNaN(date.getTime()) ? 'Belirlenmedi' : date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+                        })()}
                       </p>
                     </div>
                   </div>
@@ -343,7 +366,12 @@ const ProjectsPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-300">
-                      {new Date(project.dueDate).toLocaleDateString('tr-TR')}
+                      {(() => {
+                        const dateStr = project.dueDate || project.endDate;
+                        if (!dateStr) return 'Belirlenmedi';
+                        const date = new Date(dateStr);
+                        return isNaN(date.getTime()) ? 'Belirlenmedi' : date.toLocaleDateString('tr-TR');
+                      })()}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button

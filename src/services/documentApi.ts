@@ -8,9 +8,9 @@
 import type { DocumentType } from '../store/documentStore';
 
 // Toggle this to switch between mock and real API
-const USE_MOCK_API = true;
+const USE_MOCK_API = false;
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://backend-metrika.vercel.app';
 
 export interface UploadDocumentResponse {
     id: string;
@@ -166,7 +166,7 @@ async function realUploadDocument(
         xhr.open('POST', `${API_BASE_URL}/api/documents/upload`);
 
         // Add auth token if available
-        const token = localStorage.getItem('authToken');
+        const token = localStorage.getItem('metrika-auth-token');
         if (token) {
             xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         }
@@ -206,7 +206,7 @@ export async function analyzeDocument(documentId: string): Promise<any> {
         return { success: true, documentId };
     }
 
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('metrika-auth-token');
 
     const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/analyze`, {
         method: 'POST',
@@ -235,7 +235,7 @@ export async function deleteDocumentApi(documentId: string): Promise<void> {
         return;
     }
 
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('metrika-auth-token');
 
     const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}`, {
         method: 'DELETE',

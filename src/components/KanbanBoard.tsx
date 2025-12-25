@@ -482,9 +482,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId }) => {
     const [isNewTask, setIsNewTask] = useState(false);
     const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus>('Todo');
 
-    // Filter tasks for this project
+    // Filter tasks for this project - with null safety for projectIds
     const projectTasks = useMemo(() => {
-        return tasks.filter(t => t.projectIds.includes(projectId));
+        return tasks.filter(t => (t.projectIds || []).includes(projectId));
     }, [tasks, projectId]);
 
     // Group by status

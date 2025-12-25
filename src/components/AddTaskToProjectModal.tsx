@@ -23,10 +23,14 @@ const AddTaskToProjectModal: React.FC<AddTaskToProjectModalProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
 
+    // Safe access to arrays that could be undefined
+    const safeProjects = projects || [];
+    const safeCurrentProjectIds = currentProjectIds || [];
+
     // Mevcut projelere ait olmayan projeleri filtrele
     const availableProjects = useMemo(() => {
-        return projects.filter(p => !currentProjectIds.includes(p.id));
-    }, [projects, currentProjectIds]);
+        return safeProjects.filter(p => !safeCurrentProjectIds.includes(p.id));
+    }, [safeProjects, safeCurrentProjectIds]);
 
     // Arama filtrelemesi
     const filteredProjects = useMemo(() => {
@@ -152,8 +156,8 @@ const AddTaskToProjectModal: React.FC<AddTaskToProjectModalProps> = ({
                                         key={project.id}
                                         onClick={() => handleToggleProject(project.id)}
                                         className={`w-full flex items-center p-3 rounded-lg border transition-all ${isSelected
-                                                ? 'bg-primary/10 border-primary/50'
-                                                : 'bg-dark-900 border-dark-600 hover:border-primary/30'
+                                            ? 'bg-primary/10 border-primary/50'
+                                            : 'bg-dark-900 border-dark-600 hover:border-primary/30'
                                             }`}
                                     >
                                         <div className={`w-3 h-3 rounded-full ${projectColor?.dot || 'bg-gray-500'} mr-3 shrink-0`} />
@@ -166,8 +170,8 @@ const AddTaskToProjectModal: React.FC<AddTaskToProjectModalProps> = ({
                                             </p>
                                         </div>
                                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ml-3 transition-all ${isSelected
-                                                ? 'bg-primary border-primary'
-                                                : 'border-dark-500'
+                                            ? 'bg-primary border-primary'
+                                            : 'border-dark-500'
                                             }`}>
                                             {isSelected && <Check className="w-3 h-3 text-white" />}
                                         </div>
@@ -196,8 +200,8 @@ const AddTaskToProjectModal: React.FC<AddTaskToProjectModalProps> = ({
                                     onClick={handleAddToProjects}
                                     disabled={selectedProjectIds.length === 0}
                                     className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all ${selectedProjectIds.length > 0
-                                            ? 'bg-primary hover:bg-blue-600 text-white'
-                                            : 'bg-dark-700 text-gray-500 cursor-not-allowed'
+                                        ? 'bg-primary hover:bg-blue-600 text-white'
+                                        : 'bg-dark-700 text-gray-500 cursor-not-allowed'
                                         }`}
                                 >
                                     <FolderPlus className="w-4 h-4" />

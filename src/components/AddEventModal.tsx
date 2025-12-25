@@ -14,6 +14,10 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, selected
     const { projects } = useProjectStore();
     const { users } = useUserStore();
 
+    // Safe access to arrays that might be undefined from API
+    const safeProjects = projects || [];
+    const safeUsers = users || [];
+
     const today = selectedDate || new Date();
     const formattedDate = today.toISOString().split('T')[0];
 
@@ -21,7 +25,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, selected
         title: '',
         description: '',
         dueDate: formattedDate,
-        projectId: projects[0]?.id || '',
+        projectId: safeProjects[0]?.id || '',
         assigneeId: '',
         priority: 'Medium' as TaskPriority,
         estimatedHours: 4,
@@ -61,7 +65,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, selected
             title: '',
             description: '',
             dueDate: formattedDate,
-            projectId: projects[0]?.id || '',
+            projectId: safeProjects[0]?.id || '',
             assigneeId: '',
             priority: 'Medium',
             estimatedHours: 4,
@@ -159,7 +163,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, selected
                                 className="w-full bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
                             >
                                 <option value="">Seçiniz</option>
-                                {projects.map(project => (
+                                {safeProjects.map(project => (
                                     <option key={project.id} value={project.id}>{project.title}</option>
                                 ))}
                             </select>
@@ -176,7 +180,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, selected
                                 className="w-full bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
                             >
                                 <option value="">Seçiniz</option>
-                                {users.map(user => (
+                                {safeUsers.map(user => (
                                     <option key={user.id} value={user.id}>{user.name}</option>
                                 ))}
                             </select>

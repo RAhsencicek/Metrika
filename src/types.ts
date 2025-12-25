@@ -51,6 +51,7 @@ export interface Project {
   methodology: ProjectMethodology;
   startDate: string;
   dueDate: string;
+  endDate?: string; // Backend may send endDate instead of dueDate
   teamSize: number;
   tasksCompleted: number;
   totalTasks: number;
@@ -58,7 +59,9 @@ export interface Project {
   budgetUsed: number;
   color: ProjectColor;
   managerId: string;
+  managerInfo?: PopulatedUser; // Populated manager data from API
   teamMemberIds: string[];
+  membersInfo?: PopulatedUser[]; // Populated members data from API
   kpis: KPI[];
   createdAt: string;
   updatedAt: string;
@@ -76,14 +79,59 @@ export interface KPI {
 export type TaskStatus = 'Todo' | 'In Progress' | 'Review' | 'Done';
 export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
 
+// Populated objects from API
+export interface PopulatedUser {
+  id: string;
+  name: string;
+  avatar?: string | number;
+  email?: string;
+  role?: string;
+  department?: string;
+  status?: string;
+}
+
+export interface PopulatedProject {
+  id: string;
+  title: string;
+  color?: string;
+  status?: string;
+}
+
+export interface PopulatedDocument {
+  id: string;
+  name: string;
+  type?: string;
+  size?: string;
+  path?: string;
+}
+
+export interface PopulatedSprint {
+  id: string;
+  name: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface TaskAttachment {
+  name: string;
+  url: string;
+  mimeType?: string;
+  size?: number;
+  uploadedAt?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   description: string;
   status: TaskStatus;
   priority: TaskPriority;
-  projectIds: string[]; // Görevin bağlı olduğu proje ID'leri (birden fazla projeye bağlanabilir)
+  projectIds: string[]; // Görevin bağlı olduğu proje ID'leri
   assigneeId: string;
+  assigneeName?: string; // Populated from API response
+  assigneeAvatar?: string | number; // Populated from API response
+  assigneeEmail?: string; // Populated from API response
   documentIds?: string[]; // Görevin bağlı olduğu doküman ID'leri
   dueDate: string;
   tags: string[];
@@ -91,6 +139,12 @@ export interface Task {
   loggedHours: number;
   createdAt: string;
   updatedAt: string;
+  // Populated data from API
+  projectInfo?: PopulatedProject; // Primary project details
+  projectsInfo?: PopulatedProject[]; // All linked projects details
+  documentsInfo?: PopulatedDocument[]; // Full document details
+  sprint?: PopulatedSprint; // Sprint info
+  attachments?: TaskAttachment[]; // Attachments
 }
 
 // ============== NOTIFICATION TYPES ==============
