@@ -60,7 +60,7 @@ const CreateTaskFromDocModal: React.FC<CreateTaskFromDocModalProps> = ({
         setIsSubmitting(true);
 
         try {
-            const newTask = addTask({
+            const newTask = await addTask({
                 title: formData.title,
                 description: formData.description || `Bu görev "${analysis?.document.name}" doküman analizinden oluşturulmuştur.`,
                 status: 'Todo',
@@ -103,7 +103,7 @@ const CreateTaskFromDocModal: React.FC<CreateTaskFromDocModalProps> = ({
             let createdCount = 0;
 
             for (const action of pendingActions) {
-                const newTask = addTask({
+                const newTask = await addTask({
                     title: action.text,
                     description: `Bu görev "${analysis?.document.name}" doküman analizinden otomatik olarak oluşturulmuştur.`,
                     status: 'Todo',

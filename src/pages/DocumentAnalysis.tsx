@@ -273,7 +273,7 @@ const DocumentAnalysis: React.FC = () => {
 
         try {
             // Create the actual task in the task store
-            const newTask = addTask({
+            const newTask = await addTask({
                 title: actionText,
                 description: `Bu görev "${analysis.document.name}" dokümanından kullanıcı tarafından oluşturulmuştur.`,
                 status: 'Todo',

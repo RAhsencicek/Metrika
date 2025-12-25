@@ -172,7 +172,7 @@ const CreateProjectWizard: React.FC = () => {
     setFormData({ ...formData, kpis: [...formData.kpis, newKpi] });
   };
 
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
     // Generate a project color based on methodology
     const colorMap: Record<string, ProjectColor> = {
       'Scrum': 'purple',
@@ -181,7 +181,7 @@ const CreateProjectWizard: React.FC = () => {
     };
 
     // Create the project using the store
-    const newProject = addProject({
+    const newProject = await addProject({
       title: formData.name,
       description: formData.description || `${formData.methodology} metodolojisi ile oluşturulan proje.`,
       status: 'Active',
